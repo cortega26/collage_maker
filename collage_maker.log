@@ -1,1 +1,233 @@
-2025-03-16 16:09:46,544 - INFO - CollageMaker - Application initialized
+2025-04-17 18:47:20,649 - Celda 1 creada (tamaño 260x260).
+2025-04-17 18:47:20,650 - Celda 2 creada (tamaño 260x260).
+2025-04-17 18:47:20,650 - Celda 3 creada (tamaño 260x260).
+2025-04-17 18:47:20,650 - Celda 4 creada (tamaño 260x260).
+2025-04-17 18:47:20,650 - Collage: creado con 4 celdas.
+2025-04-17 18:47:20,651 - Ventana principal inicializada.
+2025-04-17 18:47:26,332 - Celda 1: selección cambiada a True.
+2025-04-17 18:47:26,868 - Celda 2: selección cambiada a True.
+2025-04-17 18:47:28,069 - Merged cells at (0,0) with span 1x2
+2025-04-17 18:47:29,772 - Celda 3: selección cambiada a True.
+2025-04-17 18:47:30,244 - Celda 4: selección cambiada a True.
+2025-04-17 18:47:31,197 - Merged cells at (1,0) with span 1x2
+2025-04-17 18:47:32,060 - Celda 1: selección cambiada a True.
+2025-04-17 18:47:32,764 - Celda 3: selección cambiada a True.
+2025-04-17 18:47:33,837 - Celda 2 creada (tamaño 260x260).
+2025-04-17 18:47:33,837 - Celda 3 creada (tamaño 260x260).
+2025-04-17 18:47:33,837 - Split merged cell at (0,0)
+2025-04-17 18:47:33,838 - Celda 3 creada (tamaño 260x260).
+2025-04-17 18:47:33,838 - Celda 4 creada (tamaño 260x260).
+2025-04-17 18:47:33,838 - Split merged cell at (1,0)
+2025-04-17 18:47:33,838 - Merged cells at (0,0) with span 2x1
+2025-04-17 18:52:20,654 - Autosave completed: autosave\collage_autosave_20250417_185220.json
+2025-04-17 18:57:20,663 - Autosave completed: autosave\collage_autosave_20250417_185720.json
+2025-04-17 19:02:20,678 - Autosave completed: autosave\collage_autosave_20250417_190220.json
+2025-04-17 19:07:20,697 - Autosave completed: autosave\collage_autosave_20250417_190720.json
+2025-04-17 19:12:20,701 - Autosave completed: autosave\collage_autosave_20250417_191220.json
+2025-04-17 19:17:20,712 - Autosave completed: autosave\collage_autosave_20250417_191720.json
+2025-04-17 19:21:30,904 - Application closing, cleanup complete
+2025-04-19 19:23:14,642 - Celda 1 creada (tamaño 260x260).
+2025-04-19 19:23:14,643 - Celda 2 creada (tamaño 260x260).
+2025-04-19 19:23:14,643 - Celda 3 creada (tamaño 260x260).
+2025-04-19 19:23:14,643 - Celda 4 creada (tamaño 260x260).
+2025-04-19 19:23:14,643 - Collage: creado con 4 celdas.
+2025-04-19 19:23:14,644 - Ventana principal inicializada.
+2025-04-19 19:24:21,466 - Application closing, cleanup complete
+2025-04-19 19:24:47,318 - Celda 1 creada (tamaño 260x260).
+2025-04-19 19:24:47,319 - Celda 2 creada (tamaño 260x260).
+2025-04-19 19:24:47,319 - Celda 3 creada (tamaño 260x260).
+2025-04-19 19:24:47,319 - Celda 4 creada (tamaño 260x260).
+2025-04-19 19:24:47,319 - Collage: creado con 4 celdas.
+2025-04-19 19:24:47,320 - Ventana principal inicializada.
+2025-04-19 19:25:01,630 - Celda 1: dropEvent.
+2025-04-19 19:25:01,631 - Celda 1: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Lays Orégano 140g.webp
+2025-04-19 19:25:01,693 - Image details - Size: 800x800, Format: webp
+2025-04-19 19:25:01,701 - Celda 1: imagen cargada.
+2025-04-19 19:25:01,702 - Successfully loaded image in cell 1
+2025-04-19 19:25:06,854 - Celda 2: dropEvent.
+2025-04-19 19:25:06,855 - Celda 2: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Lays-Jamón-Serrano-140gr.webp
+2025-04-19 19:25:06,855 - Image details - Size: 800x800, Format: webp
+2025-04-19 19:25:06,862 - Celda 2: imagen cargada.
+2025-04-19 19:25:06,862 - Successfully loaded image in cell 2
+2025-04-19 19:25:09,910 - Celda 3: dropEvent.
+2025-04-19 19:25:09,911 - Celda 3: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Pancho Villa - Panchitos BBQ 100g.webp
+2025-04-19 19:25:09,912 - Image details - Size: 1000x1000, Format: webp
+2025-04-19 19:25:09,920 - Celda 3: imagen cargada.
+2025-04-19 19:25:09,921 - Successfully loaded image in cell 3
+2025-04-19 19:25:11,487 - Celda 4: dropEvent.
+2025-04-19 19:25:11,488 - Celda 4: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Pancho Villa - Panchitos Chilísimos 100g.webp
+2025-04-19 19:25:11,489 - Image details - Size: 1000x1000, Format: webp
+2025-04-19 19:25:11,496 - Celda 4: imagen cargada.
+2025-04-19 19:25:11,497 - Successfully loaded image in cell 4
+2025-04-19 19:25:13,508 - Guardando collage...
+2025-04-19 19:25:19,836 - Collage guardado en C:/Users/corte/VS Code Projects/collage_maker/test2.png con alta calidad
+2025-04-19 19:29:47,352 - Autosave completed: autosave\collage_autosave_20250419_192947.json
+2025-04-19 19:29:55,482 - Application closing, cleanup complete
+2025-04-19 19:29:58,171 - Celda 1 creada (tamaño 260x260).
+2025-04-19 19:29:58,172 - Celda 2 creada (tamaño 260x260).
+2025-04-19 19:29:58,172 - Celda 3 creada (tamaño 260x260).
+2025-04-19 19:29:58,172 - Celda 4 creada (tamaño 260x260).
+2025-04-19 19:29:58,172 - Collage: creado con 4 celdas.
+2025-04-19 19:29:58,173 - Ventana principal inicializada.
+2025-04-19 19:30:08,105 - Celda 1: dropEvent.
+2025-04-19 19:30:08,107 - Celda 1: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Lays Orégano 140g.webp
+2025-04-19 19:30:08,121 - Image details - Size: 800x800, Format: webp
+2025-04-19 19:30:08,134 - Celda 1: imagen cargada.
+2025-04-19 19:30:08,138 - Successfully loaded image in cell 1
+2025-04-19 19:30:15,247 - Celda 2: dropEvent.
+2025-04-19 19:30:15,248 - Celda 2: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Lays-Jamón-Serrano-140gr.webp
+2025-04-19 19:30:15,249 - Image details - Size: 800x800, Format: webp
+2025-04-19 19:30:15,255 - Celda 2: imagen cargada.
+2025-04-19 19:30:15,256 - Successfully loaded image in cell 2
+2025-04-19 19:30:18,679 - Celda 3: dropEvent.
+2025-04-19 19:30:18,680 - Celda 3: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Pancho Villa - Panchitos BBQ 100g.webp
+2025-04-19 19:30:18,680 - Image details - Size: 1000x1000, Format: webp
+2025-04-19 19:30:18,690 - Celda 3: imagen cargada.
+2025-04-19 19:30:18,692 - Successfully loaded image in cell 3
+2025-04-19 19:30:20,463 - Celda 4: dropEvent.
+2025-04-19 19:30:20,464 - Celda 4: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Pancho Villa - Panchitos Chilísimos 100g.webp
+2025-04-19 19:30:20,465 - Image details - Size: 1000x1000, Format: webp
+2025-04-19 19:30:20,474 - Celda 4: imagen cargada.
+2025-04-19 19:30:20,476 - Successfully loaded image in cell 4
+2025-04-19 19:30:21,741 - Guardando collage...
+2025-04-19 19:30:25,396 - Collage guardado en C:/Users/corte/VS Code Projects/collage_maker/test3.png con alta calidad
+2025-04-19 19:30:26,878 - Application closing, cleanup complete
+2025-04-19 19:31:56,127 - Celda 1 creada (tamaño 260x260).
+2025-04-19 19:31:56,128 - Celda 2 creada (tamaño 260x260).
+2025-04-19 19:31:56,128 - Celda 3 creada (tamaño 260x260).
+2025-04-19 19:31:56,128 - Celda 4 creada (tamaño 260x260).
+2025-04-19 19:31:56,128 - Collage: creado con 4 celdas.
+2025-04-19 19:31:56,129 - Ventana principal inicializada.
+2025-04-19 19:31:58,788 - Updating grid to 2x2
+2025-04-19 19:31:58,789 - Celda 1 creada (tamaño 260x260).
+2025-04-19 19:31:58,790 - Celda 2 creada (tamaño 260x260).
+2025-04-19 19:31:58,791 - Celda 3 creada (tamaño 260x260).
+2025-04-19 19:31:58,791 - Celda 4 creada (tamaño 260x260).
+2025-04-19 19:31:58,791 - Collage: creado con 4 celdas.
+2025-04-19 19:31:58,843 - Celda 1: imagen cargada.
+2025-04-19 19:31:58,862 - Celda 2: imagen cargada.
+2025-04-19 19:31:58,882 - Celda 3: imagen cargada.
+2025-04-19 19:31:58,910 - Celda 4: imagen cargada.
+2025-04-19 19:31:58,911 - Collage state restored successfully
+2025-04-19 19:35:57,996 - Guardando collage...
+2025-04-19 19:36:04,298 - Collage guardado en C:/Users/corte/VS Code Projects/collage_maker/test3.png con alta calidad
+2025-04-19 19:36:21,087 - Application closing, cleanup complete
+2025-04-19 19:36:24,737 - Celda 1 creada (tamaño 260x260).
+2025-04-19 19:36:24,737 - Celda 2 creada (tamaño 260x260).
+2025-04-19 19:36:24,738 - Celda 3 creada (tamaño 260x260).
+2025-04-19 19:36:24,738 - Celda 4 creada (tamaño 260x260).
+2025-04-19 19:36:24,738 - Collage: creado con 4 celdas.
+2025-04-19 19:36:24,739 - Ventana principal inicializada.
+2025-04-19 19:36:50,105 - Celda 1: dropEvent.
+2025-04-19 19:36:50,109 - Celda 1: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Lays Orégano 140g.webp
+2025-04-19 19:36:50,124 - Image details - Size: 800x800, Format: webp
+2025-04-19 19:36:50,138 - Celda 1: imagen cargada.
+2025-04-19 19:36:50,143 - Successfully loaded image in cell 1
+2025-04-19 19:36:52,382 - Celda 2: dropEvent.
+2025-04-19 19:36:52,384 - Celda 2: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Lays-Jamón-Serrano-140gr.webp
+2025-04-19 19:36:52,385 - Image details - Size: 800x800, Format: webp
+2025-04-19 19:36:52,392 - Celda 2: imagen cargada.
+2025-04-19 19:36:52,393 - Successfully loaded image in cell 2
+2025-04-19 19:36:56,870 - Celda 3: dropEvent.
+2025-04-19 19:36:56,872 - Celda 3: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Papas Queso Cheddar 180g Lay's.webp
+2025-04-19 19:36:56,874 - Image details - Size: 800x800, Format: webp
+2025-04-19 19:36:56,882 - Celda 3: imagen cargada.
+2025-04-19 19:36:56,886 - Successfully loaded image in cell 3
+2025-04-19 19:36:58,855 - Celda 4: dropEvent.
+2025-04-19 19:36:58,856 - Celda 4: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Papas Rústicas Sal de Mar Marco Polo 150g.webp
+2025-04-19 19:36:58,857 - Image details - Size: 800x800, Format: webp
+2025-04-19 19:36:58,864 - Celda 4: imagen cargada.
+2025-04-19 19:36:58,865 - Successfully loaded image in cell 4
+2025-04-19 19:37:00,334 - Saving collage with maximum quality...
+2025-04-19 19:37:00,344 - Error saving collage: type object 'PySide6.QtGui.QPainter' has no attribute 'HighQualityAntialiasing'
+Traceback (most recent call last):
+  File "c:\Users\corte\VS Code Projects\collage_maker\main13.py", line 1766, in save_collage
+    painter.setRenderHint(QPainter.HighQualityAntialiasing, True)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'PySide6.QtGui.QPainter' has no attribute 'HighQualityAntialiasing'
+
+2025-05-07 16:32:31,247 - Cell 1 created; size 260x260
+2025-05-07 16:32:31,248 - Cell 2 created; size 260x260
+2025-05-07 16:32:31,249 - Cell 3 created; size 260x260
+2025-05-07 16:32:31,249 - Cell 4 created; size 260x260
+2025-05-07 16:32:31,249 - CollageWidget: populated 2x2 grid.
+2025-05-07 16:32:31,252 - MainWindow initialized.
+2025-05-07 16:39:05,431 - Cell 1 created; size 260x260
+2025-05-07 16:39:05,432 - Cell 2 created; size 260x260
+2025-05-07 16:39:05,433 - Cell 3 created; size 260x260
+2025-05-07 16:39:05,433 - Cell 4 created; size 260x260
+2025-05-07 16:39:05,433 - CollageWidget: populated 2x2 grid.
+2025-05-07 16:39:05,434 - MainWindow initialized.
+2025-05-07 16:41:42,217 - Cell 1 created; size 260x260
+2025-05-07 16:41:42,218 - Cell 2 created; size 260x260
+2025-05-07 16:41:42,218 - Cell 3 created; size 260x260
+2025-05-07 16:41:42,218 - Cell 4 created; size 260x260
+2025-05-07 16:41:42,218 - CollageWidget: populated 2x2 grid.
+2025-05-07 16:41:42,219 - MainWindow initialized.
+2025-05-07 16:42:23,344 - Cell 1 created; size 260x260
+2025-05-07 16:42:23,344 - Cell 2 created; size 260x260
+2025-05-07 16:42:23,345 - Cell 3 created; size 260x260
+2025-05-07 16:42:23,345 - Cell 4 created; size 260x260
+2025-05-07 16:42:23,345 - CollageWidget: populated 2x2 grid.
+2025-05-07 16:42:23,346 - MainWindow initialized.
+2025-05-07 16:42:46,578 - Cell 1: load error: PySide6.QtGui.QImage.scaled(): unsupported keyword 'transformMode'
+2025-05-07 16:42:50,970 - Cell 3: load error: PySide6.QtGui.QImage.scaled(): unsupported keyword 'transformMode'
+2025-05-07 16:43:04,955 - Cell 2: load error: PySide6.QtGui.QImage.scaled(): unsupported keyword 'transformMode'
+2025-05-07 16:43:08,505 - Cell 4: load error: PySide6.QtGui.QImage.scaled(): unsupported keyword 'transformMode'
+2025-05-07 16:44:29,630 - Celda 1 creada (tamaño 260x260).
+2025-05-07 16:44:29,630 - Celda 2 creada (tamaño 260x260).
+2025-05-07 16:44:29,630 - Celda 3 creada (tamaño 260x260).
+2025-05-07 16:44:29,630 - Celda 4 creada (tamaño 260x260).
+2025-05-07 16:44:29,630 - Collage: creado con 4 celdas.
+2025-05-07 16:44:29,631 - Ventana principal inicializada.
+2025-05-07 16:44:52,436 - Actualizando collage: 3 filas x 3 columnas.
+2025-05-07 16:44:52,436 - Updating grid to 3x3
+2025-05-07 16:44:52,437 - Celda 1 creada (tamaño 260x260).
+2025-05-07 16:44:52,437 - Celda 2 creada (tamaño 260x260).
+2025-05-07 16:44:52,437 - Celda 3 creada (tamaño 260x260).
+2025-05-07 16:44:52,438 - Celda 4 creada (tamaño 260x260).
+2025-05-07 16:44:52,438 - Celda 5 creada (tamaño 260x260).
+2025-05-07 16:44:52,438 - Celda 6 creada (tamaño 260x260).
+2025-05-07 16:44:52,438 - Celda 7 creada (tamaño 260x260).
+2025-05-07 16:44:52,438 - Celda 8 creada (tamaño 260x260).
+2025-05-07 16:44:52,438 - Celda 9 creada (tamaño 260x260).
+2025-05-07 16:44:52,438 - Collage: creado con 9 celdas.
+2025-05-07 16:45:02,796 - Actualizando collage: 2 filas x 2 columnas.
+2025-05-07 16:45:02,796 - Updating grid to 2x2
+2025-05-07 16:45:02,797 - Celda 1 creada (tamaño 260x260).
+2025-05-07 16:45:02,797 - Celda 2 creada (tamaño 260x260).
+2025-05-07 16:45:02,797 - Celda 3 creada (tamaño 260x260).
+2025-05-07 16:45:02,797 - Celda 4 creada (tamaño 260x260).
+2025-05-07 16:45:02,797 - Collage: creado con 4 celdas.
+2025-05-07 16:45:09,334 - Celda 1: dropEvent.
+2025-05-07 16:45:09,336 - Celda 1: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Papas Artesanales Merken 150g Lay's.webp
+2025-05-07 16:45:09,347 - Image details - Size: 800x800, Format: webp
+2025-05-07 16:45:09,358 - Celda 1: imagen cargada.
+2025-05-07 16:45:09,359 - Successfully loaded image in cell 1
+2025-05-07 16:45:12,621 - Celda 2: dropEvent.
+2025-05-07 16:45:12,623 - Celda 2: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Papas-Marco-Polo-Onduladas-200g.webp
+2025-05-07 16:45:12,624 - Image details - Size: 800x800, Format: webp
+2025-05-07 16:45:12,629 - Celda 2: imagen cargada.
+2025-05-07 16:45:12,630 - Successfully loaded image in cell 2
+2025-05-07 16:45:15,518 - Celda 3: dropEvent.
+2025-05-07 16:45:15,520 - Celda 3: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Papas-Marco-Polo-Caseras-200g.webp
+2025-05-07 16:45:15,520 - Image details - Size: 800x800, Format: webp
+2025-05-07 16:45:15,525 - Celda 3: imagen cargada.
+2025-05-07 16:45:15,526 - Successfully loaded image in cell 3
+2025-05-07 16:45:17,166 - Celda 4: dropEvent.
+2025-05-07 16:45:17,167 - Celda 4: cargando imagen desde C:/Users/corte/VS Code Projects/Tienda Ebano/assets/images/snacks_salados/Terra Mix Papas 120g.webp
+2025-05-07 16:45:17,168 - Image details - Size: 320x320, Format: webp
+2025-05-07 16:45:17,169 - Celda 4: imagen cargada.
+2025-05-07 16:45:17,170 - Successfully loaded image in cell 4
+2025-05-07 16:49:29,711 - Autosave completed: autosave\collage_autosave_20250507_164929.json
+2025-05-07 16:54:29,707 - Autosave completed: autosave\collage_autosave_20250507_165429.json
+2025-05-07 16:59:29,698 - Autosave completed: autosave\collage_autosave_20250507_165929.json
+2025-05-07 17:04:29,691 - Autosave completed: autosave\collage_autosave_20250507_170429.json
+2025-05-07 17:09:29,690 - Autosave completed: autosave\collage_autosave_20250507_170929.json
+2025-05-07 17:14:29,684 - Autosave completed: autosave\collage_autosave_20250507_171429.json
+2025-05-07 17:19:29,676 - Autosave completed: autosave\collage_autosave_20250507_171929.json
+2025-05-07 17:24:29,678 - Autosave completed: autosave\collage_autosave_20250507_172429.json
+2025-05-07 17:29:29,688 - Autosave completed: autosave\collage_autosave_20250507_172929.json
+2025-05-07 17:34:29,673 - Autosave completed: autosave\collage_autosave_20250507_173429.json
+2025-05-07 17:39:29,675 - Autosave completed: autosave\collage_autosave_20250507_173929.json
+2025-05-07 17:44:29,682 - Autosave completed: autosave\collage_autosave_20250507_174429.json

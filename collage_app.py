@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QInputDialog,
     QCheckBox,
-    QColorDialog,
     QLabel,
+    QColorDialog,
 )
 from PySide6.QtCore import (
     Qt,
@@ -255,6 +255,7 @@ class CollageWidget(QWidget):
                 self.grid_layout.addWidget(cell, i, j)
                 self.cells.append(cell)
 
+
     def update_grid(self, rows: int, columns: int, cell_size: int | None = None):
         self.unmerge_all()
         if cell_size is not None:
@@ -269,6 +270,7 @@ class CollageWidget(QWidget):
                 cell.row = i
                 cell.col = j
                 cell.setFixedSize(self.cell_size, self.cell_size)
+
                 self.grid_layout.addWidget(cell, i, j)
         else:
             self.populate_grid()
@@ -316,6 +318,7 @@ class MainWindow(QMainWindow):
         self.font_spin = QSpinBox()
         self.font_spin.setRange(8, 36)
         self.font_spin.setValue(14)
+
         self.font_spin.valueChanged.connect(self._apply_format)
         self.bold_chk = QCheckBox("Bold")
         self.bold_chk.setChecked(True)
@@ -330,7 +333,9 @@ class MainWindow(QMainWindow):
         self.color_btn.clicked.connect(self._choose_color)
         for w in [self.font_spin, self.bold_chk, self.italic_chk, self.underline_chk, self.color_btn]:
             layout.addWidget(w)
+
         layout.addWidget(QLabel("Right-click cells to select"))
+
         self.color = QColor("yellow")
         return layout
 
@@ -365,6 +370,7 @@ class MainWindow(QMainWindow):
 
     def _clear_collage(self):
         self.collage.unmerge_all()
+
         for cell in self.collage.cells:
             cell.clearImage()
 

@@ -1094,77 +1094,77 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("All images cleared")
         
     def save_collage(self):
-        """Save the collage as an image file with improved error handling."""
-        # Check if there are any images to save
-        has_images = any(cell.pixmap is not None for cell in self.collage.cells)
-        if not has_images:
-            QMessageBox.warning(
-                self,
-                "No Images",
-                "There are no images in the collage to save. Please add some images first."
-            )
-            return
-        
-        # Show save dialog
-        file_path, selected_filter = QFileDialog.getSaveFileName(
-            self,
-            "Save Collage",
-            QDir.homePath() + "/collage.png",  # Default name and location
-            "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg)"
-        )
-        
-        if not file_path:
-            return
-            
-        # Add extension if missing
-        if not (file_path.lower().endswith(".png") or 
-                file_path.lower().endswith(".jpg") or 
-                file_path.lower().endswith(".jpeg")):
-            if "PNG" in selected_filter:
-                file_path += ".png"
-            else:
-                file_path += ".jpg"
-                
-        # Save the collage
+        logging.info("Guardando collage...")
         try:
-            # Check if file exists and confirm overwrite
-            if os.path.exists(file_path):
-                response = QMessageBox.question(
-                    self,
-                    "File Exists",
-                    f"The file {os.path.basename(file_path)} already exists. Do you want to overwrite it?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No
-                )
-                if response == QMessageBox.No:
-                    return
+            # Create high-resolution pixmap with 4x scale for maximum quality
+            scale_factor = 4.0  # Increased from 2x to 4x for even higher quality
+            collage_size = self.collage.size()
+            scaled_size = QSize(int(collage_size.width() * scale_factor), 
+                              int(collage_size.height() * scale_factor))
             
-            # Create progress dialog for saving
-            progress = QProgressDialog("Saving collage...", "Cancel", 0, 0, self)
-            progress.setWindowModality(Qt.WindowModal)
-            progress.setCancelButton(None)  # Disable cancel to prevent partial saves
-            progress.show()
+            # Create high-res pixmap with optimal format
+            high_res_pixmap = QPixmap(scaled_size)
+            high_res_pixmap.fill(Qt.transparent)
             
-            # Save in a separate thread to prevent UI freezing
-            QApplication.processEvents()
+            # Configure painter for maximum quality
+            painter = QPainter(high_res_pixmap)
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+            painter.setRenderHint(QPainter.TextAntialiasing, True)
+            painter.setRenderHint(QPainter.HighQualityAntialiasing, True)
             
-            if self.collage.save_to_image(file_path):
-                self.statusBar().showMessage(f"Collage saved to {file_path}")
-            else:
-                QMessageBox.critical(
-                    self,
-                    "Save Error",
-                    "Failed to save the collage. Please check if you have write permissions for this location."
-                )
+            # Scale while painting
+            painter.scale(scale_factor, scale_factor)
             
-            progress.close()
-        except Exception as e:
-            QMessageBox.critical(
+            # Render with maximum quality
+            self.collage.render(painter, QPoint(0, 0), self.collage.rect())
+            painter.end()
+
+            file_path, selected_filter = QFileDialog.getSaveFileName(
                 self,
-                "Save Error",
-                f"An error occurred while saving: {str(e)}"
+                "Guardar Collage",
+                "",
+                "PNG Files (*.png);;JPEG Files (*.jpg);;WebP Files (*.webp)"
             )
             
+            if not file_path:
+                logging.info("Guardado cancelado por el usuario.")
+                return
+                
+            # Add appropriate extension
+            if not (file_path.lower().endswith(".png") or 
+                    file_path.lower().endswith(".jpg") or 
+                    file_path.lower().endswith(".jpeg") or
+                    file_path.lower().endswith(".webp")):
+                if "PNG" in selected_filter:
+                    file_path += ".png"
+                elif "JPEG" in selected_filter:
+                    file_path += ".jpg"
+                elif "WebP" in selected_filter:
+                    file_path += ".webp"
+                else:
+                    file_path += ".png"  # Default to PNG for best quality
+            
+            # Get format and configure maximum quality settings
+            format = file_path.split('.')[-1].lower()
+            
+            if format in ['jpg', 'jpeg']:
+                # For JPEG, use maximum quality (100)
+                if not high_res_pixmap.save(file_path, format, 100):
+                    raise IOError("Failed to save JPEG image.")
+            elif format == 'webp':
+                # For WebP, use lossless compression
+                if not high_res_pixmap.save(file_path, format, 100):
+                    raise IOError("Failed to save WebP image.")
+            else:  # PNG - Always lossless
+                if not high_res_pixmap.save(file_path, format):
+                    raise IOError("Failed to save PNG image.")
+                    
+            logging.info("Collage saved with maximum quality to %s", file_path)
+            
+        except Exception as e:
+            logging.error("Error saving collage: %s\n%s", e, traceback.format_exc())
+        
     def save_settings(self):
         """Save application settings."""
         settings = QSettings("CollageMaker", "Preferences")
@@ -1179,7 +1179,7 @@ class MainWindow(QMainWindow):
         
         # Save caption formatting
         panel = self.findChild(FormattingPanel)
-        if panel:
+        if (panel):
             fmt = panel.get_current_formatting()
             settings.setValue("caption/font_size", fmt.font_size)
             settings.setValue("caption/bold", fmt.bold)
