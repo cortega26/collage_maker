@@ -1,0 +1,72 @@
+/* Main Window */
+QMainWindow {
+    background-color: #f5f5f5;
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 5px 15px;
+    min-width: 80px;
+}
+
+QPushButton:hover {
+    background-color: #0056b3;
+}
+
+QPushButton:disabled {
+    background-color: #cccccc;
+}
+
+/* ComboBox */
+QComboBox {
+    border: 1px solid #cccccc;
+    border-radius: 3px;
+    padding: 5px;
+    min-width: 100px;
+    background-color: white;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox::down-arrow {
+    image: url(down_arrow.png);
+    width: 12px;
+    height: 12px;
+}
+
+QComboBox QAbstractItemView {
+    border: 1px solid #cccccc;
+    selection-background-color: #007bff;
+    selection-color: white;
+}
+
+/* Image Labels */
+ImageLabel {
+    border: 2px dashed #cccccc;
+    border-radius: 5px;
+    background-color: white;
+}
+
+ImageLabel:hover {
+    border-color: #007bff;
+}
+
+/* Layout */
+QVBoxLayout, QHBoxLayout {
+    spacing: 10px;
+    margin: 10px;
+}
+
+/* Collage Canvas */
+CollageCanvas {
+    background-color: white;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+}
