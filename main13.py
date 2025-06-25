@@ -569,7 +569,6 @@ class CollageCell(QWidget):
     def _onImageLoaded(self, pixmap: QPixmap, filename: str):
         """Handle loaded image with quality preservation."""
         try:
-        try:
             # Store original uncompressed image
             self.original_pixmap = pixmap.copy()  # Make a deep copy of original
             
@@ -1977,8 +1976,8 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(
             self,
             "Error",
-            message + ("\n\nDetailed error:\n" + detailed_error if detailed_errorelse "")
-        )
+            message + ("\n\nDetailed error:\n" + detailed_error if detailed_error else None
+        ))
         logging.error(message + (f": {detailed_error}" if detailed_error else ""))
 
     def update_image_quality(self):
