@@ -5,7 +5,7 @@ import os
 import json
 import glob
 import gc
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QGridLayout, QSpinBox,
@@ -44,27 +44,10 @@ def global_exception_handler(exctype, value, traceback):
 
 sys.excepthook = global_exception_handler
 
-# Default values
-DEFAULT_ROWS = 2
-DEFAULT_COLUMNS = 2
-DEFAULT_CELL_SIZE = 260
-DEFAULT_SPACING = 2
-
 # ========================================================
 # Sistema de caché de imágenes
 # ========================================================
 
-class ImageCache:
-    """Cache system for optimizing image loading and processing."""
-def global_exception_handler(exctype, value, traceback):
-    logging.error("Uncaught exception", exc_info=(exctype, value, traceback))
-    sys.__excepthook__(exctype, value, traceback)  # Call default handler as well
-
-sys.excepthook = global_exception_handler
-
-# ========================================================
-# Sistema de caché de imágenes
-# ========================================================
 
 class ImageCache:
     """Cache system for optimizing image loading and processing."""
@@ -377,14 +360,14 @@ class CollageCell(QWidget):
             
             # Get image info before loading
             size = reader.size()
-            format = reader.format().data().decode()
+            img_format = reader.format().data().decode()
             
             # Log image details
-            logging.info(f"Image details - Size: {size.width()}x{size.height()}, Format: {format}")
+            logging.info(f"Image details - Size: {size.width()}x{size.height()}, Format: {img_format}")
             
             # Check if format is supported
             supported_formats = ['png', 'jpg', 'jpeg', 'bmp', 'webp', 'gif', 'tiff']
-            if format.lower() not in supported_formats:
+            if img_format.lower() not in supported_formats:
                 # Try to convert unsupported format
                 temp_image = QImage(file_path)
                 if not temp_image.isNull():
@@ -395,7 +378,7 @@ class CollageCell(QWidget):
                     import os
                     os.remove(temp_file)  # Clean up
                 else:
-                    raise ValueError(f"Unsupported image format: {format}")
+                    raise ValueError(f"Unsupported image format: {img_format}")
             
             # Handle large images
             max_dimension = 4000  # Increased max dimension for high-quality images
@@ -906,20 +889,25 @@ class CollageWidget(QWidget):
         
         # Create and configure animation group
         animation_group = QParallelAnimationGroup()
-        
+
         # Position animations
         anim1_pos = QPropertyAnimation(anim1, b"geometry")
         anim1_pos.setDuration(300)
         anim1_pos.setStartValue(QRect(source_pos, source_cell.size()))
         anim1_pos.setEndValue(QRect(target_pos, target_cell.size()))
         anim1_pos.setEasingCurve(QEasingCurve.InOutCubic)
-        
+        animation_group.addAnimation(anim1_pos)
+
         if target_cell.pixmap:
             anim2_pos = QPropertyAnimation(anim2, b"geometry")
             anim2_pos.setDuration(300)
             anim2_pos.setStartValue(QRect(target_pos, target_cell.size()))
+            anim2_pos.setEndValue(QRect(source_pos, source_cell.size()))
+            anim2_pos.setEasingCurve(QEasingCurve.InOutCubic)
+            animation_group.addAnimation(anim2_pos)
+
         animation_group.finished.connect(lambda: self.cleanup_animation(anim1, anim2))
-        
+
         # Start animation
         animation_group.start(QAbstractAnimation.DeleteWhenStopped)
 
@@ -1797,14 +1785,14 @@ class MainWindow(QMainWindow):
                     file_path += ".png"  # Default
             
             # Configurar calidad según el formato
-            format = file_path.split('.')[-1].lower()
+            fmt_ext = file_path.split('.')[-1].lower()
             quality = 100  # Máxima calidad por defecto
-            
-            if format in ['jpg', 'jpeg']:
-                if not high_res_pixmap.save(file_path, format, quality):
+
+            if fmt_ext in ['jpg', 'jpeg']:
+                if not high_res_pixmap.save(file_path, fmt_ext, quality):
                     raise IOError("No se pudo guardar la imagen JPEG.")
-            elif format == 'webp':
-                if not high_res_pixmap.save(file_path, format, quality):
+            elif fmt_ext == 'webp':
+                if not high_res_pixmap.save(file_path, fmt_ext, quality):
                     raise IOError("No se pudo guardar la imagen WebP.")
             else:  # png y otros
                 if not high_res_pixmap.save(file_path):
@@ -1884,9 +1872,9 @@ class MainWindow(QMainWindow):
             }
         return None
 
-    def optimize_for_format(self, pixmap: QPixmap, format: str, quality: int) -> QPixmap:
+    def optimize_for_format(self, pixmap: QPixmap, fmt: str, quality: int) -> QPixmap:
         """Optimize pixmap for specific output format."""
-        if format in ['jpg', 'jpeg']:
+        if fmt in ['jpg', 'jpeg']:
             # Convert to RGB for JPEG (removes alpha channel)
             image = pixmap.toImage()
             if image.hasAlphaChannel():
@@ -1896,7 +1884,7 @@ class MainWindow(QMainWindow):
                 painter.drawImage(0, 0, image)
                 painter.end()
                 return QPixmap.fromImage(rgb_image)
-        elif format == 'webp':
+        elif fmt == 'webp':
             # WebP supports transparency and compression
             return pixmap
         # PNG doesn't need special handling
@@ -1905,7 +1893,7 @@ class MainWindow(QMainWindow):
     def save_collage_with_options(self, options: dict):
         """Save collage with advanced options."""
         try:
-            format = options['format']
+            fmt = options['format']
             quality = options['quality']
             scale = options['resolution']
             
@@ -1936,24 +1924,24 @@ class MainWindow(QMainWindow):
                 self,
                 "Save Collage",
                 "",
-                f"{format.upper()} Files (*.{format})"
+                f"{fmt.upper()} Files (*.{fmt})"
             )
             
             if not file_path:
                 return
                 
             # Ensure correct extension
-            if not file_path.lower().endswith(f".{format}"):
-                file_path += f".{format}"
+            if not file_path.lower().endswith(f".{fmt}"):
+                file_path += f".{fmt}"
             
             # Optimize for format
-            final_pixmap = self.optimize_for_format(output_pixmap, format, quality)
+            final_pixmap = self.optimize_for_format(output_pixmap, fmt, quality)
             
             # Save with format-specific settings
             success = final_pixmap.save(
                 file_path,
-                format,
-                quality if format != 'png' else -1  # PNG uses lossless compression
+                fmt,
+                quality if fmt != 'png' else -1  # PNG uses lossless compression
             )
             
             if success:
@@ -1962,7 +1950,7 @@ class MainWindow(QMainWindow):
                 msg.setIcon(QMessageBox.Information)
                 msg.setText("Collage saved successfully!")
                 msg.setDetailedText(
-                    f"Format: {format.upper()}\n"
+                    f"Format: {fmt.upper()}\n"
                     f"Quality: {quality}%\n"
                     f"Resolution: {scale}x\n"
                     f"Size: {output_size.width()}x{output_size.height()}\n"
@@ -1970,7 +1958,7 @@ class MainWindow(QMainWindow):
                 )
                 msg.exec_()
             else:
-                raise IOError(f"Failed to save image as {format.upper()}")
+                raise IOError(f"Failed to save image as {fmt.upper()}")
                 
         except Exception as e:
             self.handle_error("Error saving collage", str(e))
