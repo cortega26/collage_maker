@@ -1,11 +1,9 @@
 import logging
 from typing import Optional
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QComboBox, QFileDialog, QMessageBox
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
 from .collage_canvas import CollageCanvas
 from utils.collage_layouts import CollageLayouts
 

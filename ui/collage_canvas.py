@@ -1,13 +1,13 @@
 import logging
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Dict
 from PyQt5.QtWidgets import (
-    QWidget, QGridLayout, QVBoxLayout, QMessageBox, 
+    QWidget, QGridLayout, QMessageBox,
     QSizePolicy
 )
 from PyQt5.QtCore import Qt, QSize, pyqtSignal, QTimer
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QImage
 from utils.collage_layouts import CollageLayouts
-from utils.image_processor import ImageProcessor, ImageProcessingError
+from utils.image_processor import ImageProcessor
 from .image_label import ImageLabel
 
 class CollageCanvas(QWidget):

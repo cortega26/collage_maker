@@ -5,7 +5,7 @@ Provides functions to scale images for display and extract metadata safely.
 """
 
 from typing import Dict
-from PySide6.QtCore import Qt, QSize, QFileInfo, QDateTime
+from PySide6.QtCore import Qt, QSize, QFileInfo
 from PySide6.QtGui import QImage, QImageReader
 
 import config
