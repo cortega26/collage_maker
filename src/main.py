@@ -15,10 +15,7 @@ from PySide6.QtCore import Qt, QSize, QPoint
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
 
 import config
-from cache import image_cache
-from optimizer import ImageOptimizer
 from widgets.collage import CollageWidget
-from workers import TaskQueue, Worker
 from managers.autosave import AutosaveManager
 from managers.performance import PerformanceMonitor
 from managers.recovery import ErrorRecoveryManager

@@ -12,7 +12,7 @@ from PySide6.QtCore import (
     Qt, QMimeData, QByteArray, QDataStream, QIODevice, QRect, QSize, QPoint
 )
 from PySide6.QtGui import (
-    QPainter, QPixmap, QImageReader, QImage, QColor, QDrag
+    QPainter, QPixmap, QImageReader, QColor, QDrag
 )
 
 import config

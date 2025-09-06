@@ -10,10 +10,8 @@ from PySide6.QtCore import QRunnable, QThreadPool, QObject, Signal, QSize
 from PySide6.QtWidgets import QProgressDialog, QMessageBox
 from PySide6.QtGui import QImageReader, QPixmap
 
-import config
 from cache import image_cache
 from optimizer import ImageOptimizer
-from widgets.cell import CollageCell
 
 
 class WorkerSignals(QObject):
