@@ -1,25 +1,20 @@
+from dataclasses import dataclass, field
 from typing import List, Dict
 import logging
 from pathlib import Path
 import json
 
+
+@dataclass(slots=True)
 class CollageLayout:
-    """
-    Represents a collage layout configuration.
-    
-    Attributes:
-        name (str): Name of the layout
-        grid (List[List[int]]): 2D grid representing the layout
-        description (str): Human-readable description of the layout
-        tags (List[str]): Categories/tags for the layout
-    """
-    
-    def __init__(self, name: str, grid: List[List[int]], description: str = "", tags: List[str] = None):
-        """Initialize a CollageLayout."""
-        self.name = name
-        self.grid = grid
-        self.description = description
-        self.tags = tags or []
+    """Represents a collage layout configuration."""
+
+    name: str
+    grid: List[List[int]]
+    description: str = ""
+    tags: List[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
         self._validate_grid()
 
     def _validate_grid(self) -> None:

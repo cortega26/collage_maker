@@ -3,14 +3,13 @@ from typing import Tuple, List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 import logging
 import imghdr
-from PIL import Image, ImageEnhance, ImageFilter, UnidentifiedImageError
+from PIL import Image, ImageEnhance, ImageFilter
 import hashlib
-import io
-import threading
 from concurrent.futures import ThreadPoolExecutor
-import queue
 
-@dataclass
+from src.cache import ImageCache
+
+@dataclass(slots=True)
 class ImageInfo:
     """
     Contains information about an image.
@@ -30,40 +29,6 @@ class ImageInfo:
     color_space: str
     exif: Optional[Dict]
 
-class ImageCache:
-    """Thread-safe cache for processed images."""
-    
-    def __init__(self, max_size: int = 100):
-        """
-        Initialize the image cache.
-        
-        Args:
-            max_size (int): Maximum number of cached images
-        """
-        self._cache: Dict[str, Image.Image] = {}
-        self._cache_lock = threading.Lock()
-        self._max_size = max_size
-        self._access_queue = queue.PriorityQueue()
-        
-    def get(self, key: str) -> Optional[Image.Image]:
-        """Get an image from the cache."""
-        with self._cache_lock:
-            return self._cache.get(key)
-            
-    def put(self, key: str, image: Image.Image) -> None:
-        """Add an image to the cache."""
-        with self._cache_lock:
-            if len(self._cache) >= self._max_size:
-                self._evict_oldest()
-            self._cache[key] = image
-            
-    def _evict_oldest(self) -> None:
-        """Remove the oldest cached image."""
-        if self._cache:
-            oldest = min(self._access_queue.queue)
-            del self._cache[oldest[1]]
-            self._access_queue.get()
-
 class ImageProcessingError(Exception):
     """Custom exception for image processing errors."""
     pass
@@ -75,9 +40,9 @@ class ImageProcessor:
     MAX_IMAGE_SIZE = 10000  # Maximum dimension in pixels
     QUALITY = 95  # Default JPEG quality
     
-    def __init__(self):
+    def __init__(self, cache: Optional[ImageCache] = None):
         """Initialize the image processor."""
-        self._cache = ImageCache()
+        self._cache: ImageCache = cache or ImageCache()
         self._thread_pool = ThreadPoolExecutor(max_workers=4)
         
     @staticmethod
@@ -137,8 +102,8 @@ class ImageProcessor:
             cache_key = self._generate_cache_key(image_path, operations)
             
             # Check cache
-            cached_result = self._cache.get(cache_key)
-            if cached_result:
+            cached_result, _ = self._cache.get(cache_key)
+            if cached_result is not None:
                 return cached_result
                 
             # Process image
@@ -146,7 +111,7 @@ class ImageProcessor:
                 result = self._apply_operations(img, operations)
                 
                 # Cache result
-                self._cache.put(cache_key, result)
+                self._cache.put(cache_key, result, {})
                 
                 # Save if output path provided
                 if output_path:
