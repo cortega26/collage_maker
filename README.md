@@ -12,6 +12,13 @@ The project follows a modular structure under `src/`.  The global image
 cache (`ImageCache`) was refactored for clarity and performance using an
 `OrderedDict` based LRU implementation.
 
+Recent refactoring moves layout definitions to dataclasses and reuses the
+central LRU cache for image processing to reduce duplication and memory
+usage.
+
+### Requirements
+See `requirements.txt` for the list of modern dependency versions.
+
 ### Running tests
 ```bash
 pytest
