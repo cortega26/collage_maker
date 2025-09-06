@@ -1,11 +1,22 @@
-.qodo
-.png
-.webp
-.jpg
-.jpeg
-.svg
-.gif
-.ico
-.json
-.sh
-.ini
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.log
+
+# Runtime generated files
+autosave/
+*.json
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.svg
+*.gif
+*.ico
+
+# Scripts and local config
+*.sh
+*.ini
+
+# Misc
+*.qodo
