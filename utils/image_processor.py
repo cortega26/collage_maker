@@ -157,8 +157,10 @@ class ImageProcessor:
     def _resize_image(image: Image.Image, size: Tuple[int, int], keep_aspect: bool = True) -> Image.Image:
         """Resize an image."""
         if keep_aspect:
-            return image.resize(size, Image.Resampling.LANCZOS)
-        return image.thumbnail(size, Image.Resampling.LANCZOS)
+            resized = image.copy()
+            resized.thumbnail(size, Image.Resampling.LANCZOS)
+            return resized
+        return image.resize(size, Image.Resampling.LANCZOS)
         
     @staticmethod
     def _rotate_image(image: Image.Image, angle: float, expand: bool = True) -> Image.Image:
