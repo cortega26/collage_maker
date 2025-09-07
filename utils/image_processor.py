@@ -3,11 +3,12 @@ from typing import Tuple, List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 import logging
 import imghdr
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
 
 from src.cache import ImageCache
+from .image_operations import apply_operations
 
 @dataclass(slots=True)
 class ImageInfo:
@@ -130,71 +131,7 @@ class ImageProcessor:
         
     def _apply_operations(self, image: Image.Image, operations: List[Dict[str, Any]]) -> Image.Image:
         """Apply a series of operations to an image."""
-        result = image.copy()
-        
-        for operation in operations:
-            op_type = operation.get('type')
-            params = operation.get('params', {})
-            
-            if op_type == 'resize':
-                result = self._resize_image(result, **params)
-            elif op_type == 'rotate':
-                result = self._rotate_image(result, **params)
-            elif op_type == 'adjust_brightness':
-                result = self._adjust_brightness(result, **params)
-            elif op_type == 'adjust_contrast':
-                result = self._adjust_contrast(result, **params)
-            elif op_type == 'crop':
-                result = self._crop_image(result, **params)
-            elif op_type == 'filter':
-                result = self._apply_filter(result, **params)
-            else:
-                logging.warning(f"Unknown operation type: {op_type}")
-                
-        return result
-        
-    @staticmethod
-    def _resize_image(image: Image.Image, size: Tuple[int, int], keep_aspect: bool = True) -> Image.Image:
-        """Resize an image."""
-        if keep_aspect:
-            resized = image.copy()
-            resized.thumbnail(size, Image.Resampling.LANCZOS)
-            return resized
-        return image.resize(size, Image.Resampling.LANCZOS)
-        
-    @staticmethod
-    def _rotate_image(image: Image.Image, angle: float, expand: bool = True) -> Image.Image:
-        """Rotate an image."""
-        return image.rotate(angle, expand=expand, resample=Image.Resampling.BICUBIC)
-        
-    @staticmethod
-    def _adjust_brightness(image: Image.Image, factor: float) -> Image.Image:
-        """Adjust image brightness."""
-        enhancer = ImageEnhance.Brightness(image)
-        return enhancer.enhance(factor)
-        
-    @staticmethod
-    def _adjust_contrast(image: Image.Image, factor: float) -> Image.Image:
-        """Adjust image contrast."""
-        enhancer = ImageEnhance.Contrast(image)
-        return enhancer.enhance(factor)
-        
-    @staticmethod
-    def _crop_image(image: Image.Image, box: Tuple[int, int, int, int]) -> Image.Image:
-        """Crop an image."""
-        return image.crop(box)
-        
-    @staticmethod
-    def _apply_filter(image: Image.Image, filter_type: str) -> Image.Image:
-        """Apply an image filter."""
-        filters = {
-            'blur': ImageFilter.BLUR,
-            'sharpen': ImageFilter.SHARPEN,
-            'smooth': ImageFilter.SMOOTH,
-            'edge_enhance': ImageFilter.EDGE_ENHANCE,
-            'detail': ImageFilter.DETAIL
-        }
-        return image.filter(filters.get(filter_type, ImageFilter.BLUR))
+        return apply_operations(image, operations)
         
     def _save_image(self, image: Image.Image, output_path: Union[str, Path]) -> None:
         """Save an image with optimal settings."""
