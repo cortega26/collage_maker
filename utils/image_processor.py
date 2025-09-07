@@ -2,8 +2,7 @@ from pathlib import Path
 from typing import Tuple, List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 import logging
-import imghdr
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
 
@@ -65,17 +64,13 @@ class ImageProcessor:
                 
             if path.suffix.lower() not in ImageProcessor.VALID_EXTENSIONS:
                 return False
-                
-            # Verify file type
-            if not imghdr.what(str(path)):
-                return False
-                
+
             # Validate image data
             with Image.open(path) as img:
                 img.verify()
-                
+
             return True
-        except Exception as e:
+        except (UnidentifiedImageError, OSError) as e:
             logging.warning(f"Invalid image file {file_path}: {e}")
             return False
             
