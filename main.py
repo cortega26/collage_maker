@@ -2,6 +2,11 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
 
+from utils.validation import validate_image_path, validate_output_path
+from utils.image_processor import ImageProcessor
+
+ALLOWED_EXTENSIONS = ImageProcessor.VALID_EXTENSIONS
+
 # Se intenta importar tkdnd para drag & drop desde el explorador.
 # Si no está disponible, se usará la funcionalidad de doble clic para cargar imágenes.
 try:
@@ -51,8 +56,9 @@ class CollageCell(tk.Canvas):
 
     def load_image(self, file_path):
         try:
-            image = Image.open(file_path)
-            self.image_path = file_path
+            safe_path = validate_image_path(file_path, ALLOWED_EXTENSIONS)
+            image = Image.open(safe_path)
+            self.image_path = str(safe_path)
             self.original_image = image
             self.process_and_display_image()
         except Exception as e:
@@ -194,7 +200,8 @@ class CollageMakerApp(tk.Tk if not USE_DND else TkinterDnD.Tk):
                                                  filetypes=filetypes)
         if file_path:
             try:
-                collage_img.save(file_path, self.selected_format.get())
+                safe_path = validate_output_path(file_path, {'.png', '.webp'})
+                collage_img.save(safe_path, self.selected_format.get())
                 messagebox.showinfo("Guardado", "Collage guardado exitosamente.")
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo guardar el collage:\n{e}")
