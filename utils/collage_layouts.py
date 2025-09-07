@@ -3,6 +3,7 @@ from typing import List, Dict
 import logging
 from pathlib import Path
 import json
+from functools import lru_cache
 
 
 @dataclass(slots=True)
@@ -187,26 +188,47 @@ class CollageLayouts:
             raise ValueError(f"Layout '{name}' not found")
             
     @classmethod
+    @lru_cache(maxsize=None)
     def get_layout_names(cls) -> List[str]:
-        """Get a list of all available layout names."""
+        """Get a list of all available layout names.
+
+        Big-O:
+            Before caching: ``O(n log n)`` for sorting ``n`` layouts.
+            After caching: ``O(n log n)`` once; ``O(1)`` on repeated calls
+            until layouts change.
+        """
         return sorted(cls.LAYOUTS.keys())
-        
+
     @classmethod
+    @lru_cache(maxsize=None)
     def get_layouts_by_tag(cls, tag: str) -> List[CollageLayout]:
-        """Get layouts filtered by tag."""
+        """Get layouts filtered by tag.
+
+        Big-O:
+            Before caching: ``O(n)`` per call to scan ``n`` layouts.
+            After caching: ``O(n)`` for the first call of a tag, ``O(1)`` for
+            subsequent requests for the same tag.
+        """
         return [
             layout for layout in cls.LAYOUTS.values()
             if tag in layout.tags
         ]
+
+    @classmethod
+    def _invalidate_caches(cls) -> None:
+        """Clear cached layout lookups."""
+        cls.get_layout_names.cache_clear()
+        cls.get_layouts_by_tag.cache_clear()
         
     @classmethod
     def add_custom_layout(cls, layout: CollageLayout) -> None:
         """Add a custom layout."""
         if layout.name in cls.LAYOUTS:
             raise ValueError(f"Layout '{layout.name}' already exists")
-            
+
         cls.LAYOUTS[layout.name] = layout
         logging.info(f"Added new layout: {layout.name}")
+        cls._invalidate_caches()
         
     @classmethod
     def remove_layout(cls, name: str) -> None:
@@ -216,6 +238,8 @@ class CollageLayouts:
             logging.info(f"Removed layout: {name}")
         except KeyError:
             raise ValueError(f"Layout '{name}' not found")
+        else:
+            cls._invalidate_caches()
             
     @classmethod
     def save_layouts(cls, file_path: str) -> None:
@@ -247,11 +271,12 @@ class CollageLayouts:
                 
             with path.open('r', encoding='utf-8') as f:
                 layouts_data = json.load(f)
-                
+
             for name, layout_data in layouts_data.items():
                 cls.LAYOUTS[name] = CollageLayout.from_dict(layout_data)
-                
+
             logging.info(f"Loaded layouts from {file_path}")
+            cls._invalidate_caches()
         except Exception as e:
             logging.error(f"Failed to load layouts: {e}")
             raise
