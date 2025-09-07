@@ -15,6 +15,7 @@ try:
 except ImportError:
     USE_DND = False
 
+
 class CollageCell(tk.Canvas):
     def __init__(self, master, row, col, width, height, **kwargs):
         super().__init__(master, width=width, height=height, bg='lightgrey',
@@ -28,7 +29,8 @@ class CollageCell(tk.Canvas):
         self.processed_image = None  # Imagen ajustada a la celda (PIL.Image)
         self.tk_image = None  # Imagen para Tkinter (ImageTk.PhotoImage)
         # Mensaje por defecto
-        self.create_text(self.cell_width/2, self.cell_height/2, text="Drop image here", fill="black")
+        self.create_text(self.cell_width/2, self.cell_height/2,
+                         text="Drop image here", fill="black")
         # Si se hace doble clic se abre un diálogo para cargar la imagen
         self.bind("<Double-Button-1>", self.load_image_dialog)
         # Si está disponible el drag & drop desde el explorador se registra el widget como destino
@@ -42,7 +44,8 @@ class CollageCell(tk.Canvas):
         self.drag_data = {"x": 0, "y": 0, "item": None}
 
     def load_image_dialog(self, event=None):
-        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
         if file_path:
             self.load_image(file_path)
 
@@ -115,9 +118,12 @@ class CollageCell(tk.Canvas):
     def redraw(self):
         self.delete("all")
         if self.tk_image:
-            self.create_image(self.cell_width/2, self.cell_height/2, image=self.tk_image)
+            self.create_image(self.cell_width/2,
+                              self.cell_height/2, image=self.tk_image)
         else:
-            self.create_text(self.cell_width/2, self.cell_height/2, text="Drop image here", fill="black")
+            self.create_text(self.cell_width/2, self.cell_height/2,
+                             text="Drop image here", fill="black")
+
 
 class CollageMakerApp(tk.Tk if not USE_DND else TkinterDnD.Tk):
     def __init__(self):
@@ -139,32 +145,39 @@ class CollageMakerApp(tk.Tk if not USE_DND else TkinterDnD.Tk):
 
         tk.Label(control_frame, text="Filas:").pack(side="left")
         self.rows_var = tk.IntVar(value=self.rows)
-        tk.Spinbox(control_frame, from_=1, to=10, width=3, textvariable=self.rows_var).pack(side="left")
+        tk.Spinbox(control_frame, from_=1, to=10, width=3,
+                   textvariable=self.rows_var).pack(side="left")
 
         tk.Label(control_frame, text="Columnas:").pack(side="left")
         self.cols_var = tk.IntVar(value=self.cols)
-        tk.Spinbox(control_frame, from_=1, to=10, width=3, textvariable=self.cols_var).pack(side="left")
+        tk.Spinbox(control_frame, from_=1, to=10, width=3,
+                   textvariable=self.cols_var).pack(side="left")
 
         tk.Label(control_frame, text="Ancho celda:").pack(side="left")
         self.cell_width_var = tk.IntVar(value=self.cell_width)
-        tk.Spinbox(control_frame, from_=50, to=500, width=4, textvariable=self.cell_width_var).pack(side="left")
+        tk.Spinbox(control_frame, from_=50, to=500, width=4,
+                   textvariable=self.cell_width_var).pack(side="left")
 
         tk.Label(control_frame, text="Alto celda:").pack(side="left")
         self.cell_height_var = tk.IntVar(value=self.cell_height)
-        tk.Spinbox(control_frame, from_=50, to=500, width=4, textvariable=self.cell_height_var).pack(side="left")
+        tk.Spinbox(control_frame, from_=50, to=500, width=4,
+                   textvariable=self.cell_height_var).pack(side="left")
 
-        tk.Button(control_frame, text="Crear Collage", command=self.build_collage_grid).pack(side="left", padx=5)
+        tk.Button(control_frame, text="Crear Collage",
+                  command=self.build_collage_grid).pack(side="left", padx=5)
 
         tk.Label(control_frame, text="Formato salida:").pack(side="left")
         format_option = ttk.Combobox(control_frame, textvariable=self.selected_format,
                                      values=["PNG", "webp"], width=5, state="readonly")
         format_option.pack(side="left")
 
-        tk.Button(control_frame, text="Guardar Collage", command=self.save_collage).pack(side="left", padx=5)
+        tk.Button(control_frame, text="Guardar Collage",
+                  command=self.save_collage).pack(side="left", padx=5)
 
         # Frame principal para el grid del collage
         self.grid_frame = tk.Frame(self)
-        self.grid_frame.pack(side="top", fill="both", expand=True, padx=5, pady=5)
+        self.grid_frame.pack(side="top", fill="both",
+                             expand=True, padx=5, pady=5)
 
         self.build_collage_grid()
 
@@ -180,7 +193,8 @@ class CollageMakerApp(tk.Tk if not USE_DND else TkinterDnD.Tk):
         for r in range(self.rows):
             row_cells = []
             for c in range(self.cols):
-                cell = CollageCell(self.grid_frame, r, c, self.cell_width, self.cell_height)
+                cell = CollageCell(self.grid_frame, r, c,
+                                   self.cell_width, self.cell_height)
                 cell.grid(row=r, column=c, padx=2, pady=2)
                 row_cells.append(cell)
             self.cells.append(row_cells)
@@ -189,11 +203,13 @@ class CollageMakerApp(tk.Tk if not USE_DND else TkinterDnD.Tk):
         # Se genera la imagen final combinando las imágenes de cada celda
         collage_width = self.cols * self.cell_width
         collage_height = self.rows * self.cell_height
-        collage_img = Image.new("RGB", (collage_width, collage_height), (255, 255, 255))
+        collage_img = Image.new(
+            "RGB", (collage_width, collage_height), (255, 255, 255))
         for r, row_cells in enumerate(self.cells):
             for c, cell in enumerate(row_cells):
                 if cell.processed_image:
-                    collage_img.paste(cell.processed_image, (c * self.cell_width, r * self.cell_height))
+                    collage_img.paste(
+                        cell.processed_image, (c * self.cell_width, r * self.cell_height))
         # Diálogo para guardar, permitiendo elegir PNG o webp
         filetypes = [("PNG", "*.png"), ("WebP", "*.webp")]
         file_path = filedialog.asksaveasfilename(defaultextension="." + self.selected_format.get().lower(),
@@ -202,9 +218,12 @@ class CollageMakerApp(tk.Tk if not USE_DND else TkinterDnD.Tk):
             try:
                 safe_path = validate_output_path(file_path, {'.png', '.webp'})
                 collage_img.save(safe_path, self.selected_format.get())
-                messagebox.showinfo("Guardado", "Collage guardado exitosamente.")
+                messagebox.showinfo(
+                    "Guardado", "Collage guardado exitosamente.")
             except Exception as e:
-                messagebox.showerror("Error", f"No se pudo guardar el collage:\n{e}")
+                messagebox.showerror(
+                    "Error", f"No se pudo guardar el collage:\n{e}")
+
 
 if __name__ == "__main__":
     app = CollageMakerApp()

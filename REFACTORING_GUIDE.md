@@ -48,6 +48,7 @@ When making changes, follow these core principles:
 ---
 
 ## Do’s
+
 - Keep functions and classes **focused and modular**.  
 - Write **self-explanatory code**; rely less on comments, more on clarity.  
 - Regularly **profile performance** during optimization work.  
@@ -57,6 +58,7 @@ When making changes, follow these core principles:
 ---
 
 ## Don’ts
+
 - Don’t introduce **regressions** or break working features.  
 - Don’t over-engineer or complicate simple solutions.  
 - Don’t skip testing after refactoring.  
@@ -66,4 +68,5 @@ When making changes, follow these core principles:
 ---
 
 ## End Goal
+
 A **cleaner, faster, and more maintainable application** that preserves existing functionality while being prepared for future growth.
