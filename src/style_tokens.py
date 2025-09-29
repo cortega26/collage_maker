@@ -7,7 +7,6 @@ static `ui/style.qss` so tokens can override defaults.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 
 @dataclass(frozen=True)
@@ -86,7 +85,21 @@ QComboBox {{
     min-height: 32px;
 }}
 QComboBox::drop-down {{ width: 22px; border-left: 1px solid {colors.border}; }}
-QComboBox QAbstractItemView {{ border: 1px solid {colors.border}; selection-background-color: {colors.primary}; selection-color: #ffffff; }}
+QComboBox QAbstractItemView {{
+    background-color: {colors.surface};
+    color: {colors.text};
+    border: 1px solid {colors.border};
+    selection-background-color: {colors.primary};
+    selection-color: #ffffff;
+}}
+QComboBox QAbstractItemView::item {{ color: {colors.text}; }}
+QComboBox QListView {{
+    background-color: {colors.surface};
+    color: {colors.text};
+    border: 1px solid {colors.border};
+    selection-background-color: {colors.primary};
+    selection-color: #ffffff;
+}}
 
 /* Spin boxes and line edits */
 QAbstractSpinBox, QLineEdit {{
@@ -163,7 +176,8 @@ def apply_tokens(app, *, theme: str = "light", colors: Colors | None = None, typ
         theme: 'light' (default) or 'dark'. Ignored if explicit colors provided.
         colors: optional Colors override. If None, chosen by theme.
     """
-    chosen = colors or (_dark_colors() if str(theme).lower() == "dark" else Colors())
+    chosen = colors or (_dark_colors() if str(
+        theme).lower() == "dark" else Colors())
     qss = build_qss(chosen, typo, radius)
     app.setStyleSheet((app.styleSheet() or "") + "\n" + qss)
 
