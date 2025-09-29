@@ -10,9 +10,8 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
     QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
-    QFrame, QPlainTextEdit, QColorDialog
+    QFrame
 )
-from PySide6.QtWidgets import QFontComboBox
 from PySide6.QtCore import Qt, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
 from dataclasses import dataclass
@@ -71,7 +70,6 @@ class MainWindow(QMainWindow):
 
         # Controls and collage
         main_layout.addLayout(self._create_controls())
-        main_layout.addLayout(self._create_caption_panel())
         self.collage = CollageWidget(
             rows=self.rows_spin.value(),
             columns=self.cols_spin.value(),

@@ -7,7 +7,7 @@ import os
 import gc
 import logging
 
-from PySide6.QtWidgets import QWidget, QInputDialog
+from PySide6.QtWidgets import QWidget, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QTextEdit
 from PySide6.QtCore import (
     Qt, QMimeData, QByteArray, QDataStream, QIODevice, QRect, QSize, QPoint
 )
@@ -325,6 +325,13 @@ class CollageCell(QWidget):
         clear_action.triggered.connect(self.clearImage)
         menu.addAction(clear_action)
         if self.pixmap:
+            caps = menu.addMenu("Captions")
+            et = QAction("Edit Top Caption…", self); et.triggered.connect(self._edit_top_caption); caps.addAction(et)
+            eb = QAction("Edit Bottom Caption…", self); eb.triggered.connect(self._edit_bottom_caption); caps.addAction(eb)
+            caps.addSeparator()
+            st = QAction("Show Top", self, checkable=True); st.setChecked(self.show_top_caption); st.toggled.connect(self._toggle_top)
+            sb = QAction("Show Bottom", self, checkable=True); sb.setChecked(self.show_bottom_caption); sb.toggled.connect(self._toggle_bottom)
+            caps.addAction(st); caps.addAction(sb)
             filters = menu.addMenu("Filters")
             for name in ["grayscale", "blur", "sharpen", "smooth", "edge_enhance", "detail"]:
                 act = QAction(name.capitalize().replace('_', ' '), self)
@@ -338,6 +345,40 @@ class CollageCell(QWidget):
             for a in (brighter, darker, morec, lessc):
                 adj.addAction(a)
         menu.exec(event.globalPos())
+
+    def _prompt_multiline(self, title: str, label_text: str, initial: str) -> Optional[str]:
+        dlg = QDialog(self)
+        dlg.setWindowTitle(title)
+        v = QVBoxLayout(dlg)
+        v.addWidget(QLabel(label_text))
+        edit = QTextEdit(); edit.setPlainText(initial or ""); edit.setMinimumHeight(100)
+        v.addWidget(edit)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept); btns.rejected.connect(dlg.reject)
+        v.addWidget(btns)
+        if dlg.exec() == QDialog.Accepted:
+            return edit.toPlainText()
+        return None
+
+    def _edit_top_caption(self) -> None:
+        text = self._prompt_multiline("Top Caption", "Enter top caption:", self.top_caption)
+        if text is not None:
+            self.top_caption = text
+            self.update()
+
+    def _edit_bottom_caption(self) -> None:
+        text = self._prompt_multiline("Bottom Caption", "Enter bottom caption:", self.bottom_caption)
+        if text is not None:
+            self.bottom_caption = text
+            self.update()
+
+    def _toggle_top(self, checked: bool) -> None:
+        self.show_top_caption = checked
+        self.update()
+
+    def _toggle_bottom(self, checked: bool) -> None:
+        self.show_bottom_caption = checked
+        self.update()
 
     def _qimage_to_pil(self) -> Image.Image:
         img = self.pixmap.toImage()
