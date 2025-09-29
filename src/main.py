@@ -9,7 +9,8 @@ import logging
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
-    QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox
+    QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
+    QFrame
 )
 from PySide6.QtCore import Qt, QSize, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
@@ -72,7 +73,6 @@ class MainWindow(QMainWindow):
         )
         self.collage.setAccessibleName("Collage Grid")
         # Wrap in a 'card' frame that uses design tokens
-        from PySide6.QtWidgets import QFrame, QVBoxLayout
         card = QFrame(); card.setObjectName("card")
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(0, 0, 0, 0)
