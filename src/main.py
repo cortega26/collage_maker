@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
+from dataclasses import dataclass
 
 from pathlib import Path
 try:
@@ -136,92 +137,101 @@ class MainWindow(QMainWindow):
                 cell.clearImage()
 
     def _show_save_dialog(self, default_original: bool = False):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Save Collage")
-        dlg_layout = QVBoxLayout(dialog)
+        opts = self._prompt_save_options(default_original)
+        if not opts:
+            return
+        self._export_collage(opts)
 
-        # Preview
-        preview = QLabel()
-        pix = self.collage.grab().scaled(300,300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        preview.setPixmap(pix)
-        dlg_layout.addWidget(preview, alignment=Qt.AlignCenter)
-
-        # Original export option
-        self.original_checkbox = QCheckBox("Save Original at full resolution")
-        self.original_checkbox.setChecked(default_original)
-        dlg_layout.addWidget(self.original_checkbox)
-
-        # Format combo
-        self.format_combo = QComboBox(); self.format_combo.addItems(["PNG","JPEG","WEBP"])
-        dlg_layout.addWidget(self.format_combo)
-
-        # Quality slider
-        self.quality_slider = QSlider(Qt.Horizontal); self.quality_slider.setRange(config.QUALITY_MIN, config.QUALITY_MAX); self.quality_slider.setValue(config.QUALITY_DEFAULT)
-        dlg_layout.addWidget(QLabel("Quality / Compression:")); dlg_layout.addWidget(self.quality_slider)
-
-        # Resolution multiplier
-        self.res_combo = QComboBox(); self.res_combo.addItems([f"{m}x" for m in config.RESOLUTION_MULTIPLIERS])
-        dlg_layout.addWidget(QLabel("Resolution:")); dlg_layout.addWidget(self.res_combo)
-
-        # Buttons
-        btns = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
-        btns.accepted.connect(dialog.accept); btns.rejected.connect(dialog.reject)
-        dlg_layout.addWidget(btns)
-
-        if dialog.exec() == QDialog.Accepted:
-            options = {
-                'format': self.format_combo.currentText().lower(),
-                'quality': self.quality_slider.value(),
-                'resolution': int(self.res_combo.currentText().rstrip('x')),
-                'save_original': self.original_checkbox.isChecked()
-            }
-            self._save_collage(options)
-
-    def _save_collage(self, opts):
+    def _export_collage(self, opts: 'MainWindow.SaveOptions'):
         try:
-            # Primary export
-            base_size = self.collage.size()
-            out_size = QSize(base_size.width()*opts['resolution'], base_size.height()*opts['resolution'])
-            primary = QPixmap(out_size); primary.fill(Qt.transparent)
-            p = QPainter(primary)
-            p.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform | QPainter.TextAntialiasing)
-            p.scale(opts['resolution'], opts['resolution'])
-            self.collage.render(p); p.end()
-
-            # Get filename
-            options = QFileDialog.Options()
-            # Work around localized known-folder paths on Windows by avoiding native dialog
-            if sys.platform.startswith('win'):
-                options |= QFileDialog.DontUseNativeDialog
-            pictures_dir = QStandardPaths.writableLocation(QStandardPaths.PicturesLocation) or ''
-            path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save Collage",
-                pictures_dir,
-                f"{opts['format'].upper()} (*.{opts['format']})",
-                options=options,
-            )
+            path = self._select_save_path(opts.format)
             if not path:
                 return
-            if not path.lower().endswith(f".{opts['format']}"):
-                path += f".{opts['format']}"
-
-            # Save primary
-            if opts['format'] in ['jpeg','jpg']:
+            primary = self._render_scaled_pixmap(opts.resolution)
+            if opts.format in ('jpeg','jpg'):
                 primary = self._convert_for_jpeg(primary)
-            primary.save(path, opts['format'], opts['quality'])
+            primary.save(path, opts.format, opts.quality)
             logging.info("Saved collage to %s", path)
 
-            # Optional original export
-            if opts['save_original']:
-                orig_path = os.path.splitext(path)[0] + '_original.' + opts['format']
-                self._save_original(orig_path, opts['format'], opts['quality'])
+            if opts.save_original:
+                orig_path = os.path.splitext(path)[0] + '_original.' + opts.format
+                self._save_original(orig_path, opts.format, opts.quality)
 
             QMessageBox.information(self, "Saved", f"Saved: {path}")
-
         except Exception as e:
             logging.error("Save failed: %s", e)
             QMessageBox.critical(self, "Error", f"Could not save collage: {e}")
+
+    @dataclass(slots=True)
+    class SaveOptions:
+        format: str
+        quality: int
+        resolution: int
+        save_original: bool
+
+    def _prompt_save_options(self, default_original: bool = False) -> 'MainWindow.SaveOptions | None':
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Save Collage")
+        v = QVBoxLayout(dialog)
+
+        preview = QLabel()
+        pix = self.collage.grab().scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        preview.setPixmap(pix)
+        v.addWidget(preview, alignment=Qt.AlignCenter)
+
+        original = QCheckBox("Save Original at full resolution")
+        original.setChecked(default_original)
+        v.addWidget(original)
+
+        fmt_box = QComboBox(); fmt_box.addItems(["PNG", "JPEG", "WEBP"])
+        v.addWidget(fmt_box)
+
+        v.addWidget(QLabel("Quality / Compression:"))
+        quality = QSlider(Qt.Horizontal); quality.setRange(config.QUALITY_MIN, config.QUALITY_MAX); quality.setValue(config.QUALITY_DEFAULT)
+        v.addWidget(quality)
+
+        v.addWidget(QLabel("Resolution:"))
+        res_box = QComboBox(); res_box.addItems([f"{m}x" for m in config.RESOLUTION_MULTIPLIERS])
+        v.addWidget(res_box)
+
+        btns = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dialog.accept); btns.rejected.connect(dialog.reject)
+        v.addWidget(btns)
+
+        if dialog.exec() != QDialog.Accepted:
+            return None
+        return MainWindow.SaveOptions(
+            format=fmt_box.currentText().lower(),
+            quality=quality.value(),
+            resolution=int(res_box.currentText().rstrip('x')),
+            save_original=original.isChecked(),
+        )
+
+    def _select_save_path(self, fmt: str) -> 'str | None':
+        options = QFileDialog.Options()
+        if sys.platform.startswith('win'):
+            options |= QFileDialog.DontUseNativeDialog
+        pictures_dir = QStandardPaths.writableLocation(QStandardPaths.PicturesLocation) or ''
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Collage",
+            pictures_dir,
+            f"{fmt.upper()} (*.{fmt})",
+            options=options,
+        )
+        if not path:
+            return None
+        return path if path.lower().endswith(f".{fmt}") else f"{path}.{fmt}"
+
+    def _render_scaled_pixmap(self, resolution: int) -> QPixmap:
+        base_size = self.collage.size()
+        out_size = QSize(base_size.width()*resolution, base_size.height()*resolution)
+        primary = QPixmap(out_size); primary.fill(Qt.transparent)
+        p = QPainter(primary)
+        p.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform | QPainter.TextAntialiasing)
+        p.scale(resolution, resolution)
+        self.collage.render(p); p.end()
+        return primary
 
     def _add_images(self):
         # Select multiple images and fill empty cells in reading order

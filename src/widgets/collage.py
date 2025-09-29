@@ -219,16 +219,30 @@ class CollageWidget(QWidget):
             cell.setFixedSize(size, size)
 
     def merge_selected(self) -> bool:
-        """Convenience: merge all currently selected into a rectangle."""
-        selected = [(cell, self.get_cell_position(cell)) for cell in self.cells if cell.selected]
-        if len(selected) < 2:
+        """Convenience: merge all selected cells if they form a rectangle."""
+        rect = self.selected_rectangle()
+        if not rect:
             return False
-        # get_cell_position returns (row, col)
-        rows = [pos[0] for _, pos in selected]
-        cols = [pos[1] for _, pos in selected]
-        min_r, max_r = min(rows), max(rows)
-        min_c, max_c = min(cols), max(cols)
-        return self.merge_cells(min_r, min_c, max_r - min_r + 1, max_c - min_c + 1)
+        r, c, rs, cs = rect
+        return self.merge_cells(r, c, rs, cs)
+
+    def selected_rectangle(self) -> Optional[Tuple[int, int, int, int]]:
+        """Return (row, col, rowspan, colspan) if selection is a filled rectangle.
+
+        Returns None if fewer than 2 cells are selected or the selection is non-rectangular.
+        """
+        positions = [self.get_cell_position(c) for c in self.cells if c.selected]
+        positions = [p for p in positions if p]
+        if len(positions) < 2:
+            return None
+        rows = [r for r, _ in positions]
+        cols = [c for _, c in positions]
+        r0, r1 = min(rows), max(rows)
+        c0, c1 = min(cols), max(cols)
+        required = {(r, c) for r in range(r0, r1 + 1) for c in range(c0, c1 + 1)}
+        if set(positions) != required:
+            return None
+        return r0, c0, (r1 - r0 + 1), (c1 - c0 + 1)
 
     def clear(self) -> None:
         """Reset entire grid to initial empty state."""

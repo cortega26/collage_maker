@@ -86,59 +86,55 @@ class CollageCell(QWidget):
         self.update()
 
     def paintEvent(self, event):
+        """Paint placeholder if empty, otherwise image and optional caption."""
         painter = QPainter(self)
         try:
             painter.setRenderHint(QPainter.Antialiasing)
             painter.setRenderHint(QPainter.SmoothPixmapTransform)
             painter.setRenderHint(QPainter.TextAntialiasing)
-
-            rect = self.rect()
-            # Draw placeholder
             if not self.pixmap:
-                painter.fillRect(rect, QColor(245, 245, 245))
-                painter.setPen(QColor(180, 180, 180))
-                font = painter.font()
-                font.setPointSize(10)
-                painter.setFont(font)
-                painter.drawText(
-                    rect,
-                    Qt.AlignCenter,
-                    "Drop Image Here\nCtrl+Click to Select"
-                )
+                self._draw_placeholder(painter)
                 return
-
-            # Draw image
-            scaled = self.pixmap.scaled(
-                rect.size(),
-                self.aspect_ratio_mode,
-                self.transformation_mode
-            )
-            x = (rect.width() - scaled.width()) // 2
-            y = (rect.height() - scaled.height()) // 2
-            painter.drawPixmap(QRect(x, y, scaled.width(), scaled.height()), scaled)
-
-            # Draw caption
+            self._draw_image(painter)
             if self.caption:
-                font = painter.font()
-                if self.use_caption_formatting:
-                    font.setPointSize(self.caption_font_size)
-                    font.setBold(self.caption_bold)
-                    font.setItalic(self.caption_italic)
-                    font.setUnderline(self.caption_underline)
-                else:
-                    font.setPointSize(12)
-                painter.setFont(font)
-                metrics = painter.fontMetrics()
-                text_rect = metrics.boundingRect(self.caption)
-                text_rect.moveCenter(QPoint(rect.center().x(), rect.bottom() - text_rect.height()//2 - 5))
-                background = text_rect.adjusted(-6, -3, 6, 3)
-                painter.fillRect(background, QColor(0, 0, 0, 160))
-                painter.setPen(QColor(0, 0, 0, 160))
-                painter.drawText(text_rect.translated(1,1), Qt.AlignCenter, self.caption)
-                painter.setPen(Qt.white)
-                painter.drawText(text_rect, Qt.AlignCenter, self.caption)
+                self._draw_caption(painter)
         finally:
             painter.end()
+
+    def _draw_placeholder(self, painter: QPainter) -> None:
+        rect = self.rect()
+        painter.fillRect(rect, QColor(245, 245, 245))
+        painter.setPen(QColor(180, 180, 180))
+        font = painter.font(); font.setPointSize(10); painter.setFont(font)
+        painter.drawText(rect, Qt.AlignCenter, "Drop Image Here\nCtrl+Click to Select")
+
+    def _draw_image(self, painter: QPainter) -> None:
+        rect = self.rect()
+        scaled = self.pixmap.scaled(rect.size(), self.aspect_ratio_mode, self.transformation_mode)
+        x = (rect.width() - scaled.width()) // 2
+        y = (rect.height() - scaled.height()) // 2
+        painter.drawPixmap(QRect(x, y, scaled.width(), scaled.height()), scaled)
+
+    def _draw_caption(self, painter: QPainter) -> None:
+        rect = self.rect()
+        font = painter.font()
+        if self.use_caption_formatting:
+            font.setPointSize(self.caption_font_size)
+            font.setBold(self.caption_bold)
+            font.setItalic(self.caption_italic)
+            font.setUnderline(self.caption_underline)
+        else:
+            font.setPointSize(12)
+        painter.setFont(font)
+        metrics = painter.fontMetrics()
+        text_rect = metrics.boundingRect(self.caption)
+        text_rect.moveCenter(QPoint(rect.center().x(), rect.bottom() - text_rect.height()//2 - 5))
+        background = text_rect.adjusted(-6, -3, 6, 3)
+        painter.fillRect(background, QColor(0, 0, 0, 160))
+        painter.setPen(QColor(0, 0, 0, 160))
+        painter.drawText(text_rect.translated(1, 1), Qt.AlignCenter, self.caption)
+        painter.setPen(Qt.white)
+        painter.drawText(text_rect, Qt.AlignCenter, self.caption)
 
     def mousePressEvent(self, event):
         if event.button() != Qt.LeftButton:

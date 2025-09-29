@@ -15,6 +15,11 @@ from .optimizer import ImageOptimizer
 
 
 class WorkerSignals(QObject):
+    """Qt signals for background tasks.
+
+    - progress: integer percentage (0..100)
+    - result: payload from the worker function
+    """
     started = Signal()
     finished = Signal()
     error = Signal(str)
@@ -23,7 +28,7 @@ class WorkerSignals(QObject):
 
 
 class Worker(QRunnable):
-    """Wraps any function to run in a QThreadPool."""
+    """Wrap any function to run in the global QThreadPool and emit signals."""
     def __init__(
         self,
         fn: Callable,
@@ -84,21 +89,22 @@ class TaskQueue:
 
 
 class BatchProcessor:
-    """Handles batch loading and caching of image files."""
+    """Handles batch loading and caching of image files with a progress dialog."""
     def __init__(self, parent_widget):
         self.parent = parent_widget
         self.thread_pool = QThreadPool.globalInstance()
 
     def process_files(self, file_paths: List[str], target_size: Optional[QSize] = None) -> None:
-        """Asynchronously load, optimize, cache images, showing progress."""
-        dialog = QProgressDialog(
-            "Processing images...", "Cancel", 0, len(file_paths), self.parent
-        )
-        dialog.setWindowModality(True)
-        dialog.show()
+        """Asynchronously load, optimize, and cache images, showing a cancellable progress dialog."""
+        dialog = QProgressDialog("Processing images...", "Cancel", 0, len(file_paths), self.parent)
+        dialog.setWindowModality(True); dialog.show()
+        cancelled = {"flag": False}
+        dialog.canceled.connect(lambda: cancelled.__setitem__("flag", True))
 
         def _task(path_list):
             for idx, path in enumerate(path_list):
+                if cancelled["flag"]:
+                    break
                 reader = QImageReader(path)
                 reader.setAutoTransform(True)
                 if target_size:
