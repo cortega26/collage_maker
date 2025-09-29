@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QFrame
 )
 from PySide6.QtCore import Qt, QSize, QPoint, QStandardPaths
-from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
+from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage, QColor, QPalette
 from dataclasses import dataclass
 
 from pathlib import Path
@@ -64,6 +64,10 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
 
+        # Determine theme colors for per-widget overrides
+        self._theme = os.environ.get('COLLAGE_THEME', 'light')
+        self._colors = style_tokens.get_colors(theme=self._theme)
+
         # Controls and collage
         main_layout.addLayout(self._create_controls())
         self.collage = CollageWidget(
@@ -98,6 +102,31 @@ class MainWindow(QMainWindow):
         # Grid controls
         self.rows_spin = QSpinBox(); self.rows_spin.setRange(1,10); self.rows_spin.setValue(config.DEFAULT_ROWS)
         self.cols_spin = QSpinBox(); self.cols_spin.setRange(1,10); self.cols_spin.setValue(config.DEFAULT_COLUMNS)
+        # Force high-contrast text/background for spin boxes regardless of platform theme quirks
+        spin_ss = f"""
+        QSpinBox {{
+            background-color: {self._colors.surface};
+            color: {self._colors.text};
+            border: 1px solid {self._colors.border};
+            border-radius: 6px;
+            padding: 4px 22px 4px 8px;
+            min-height: 28px;
+        }}
+        QSpinBox QLineEdit {{
+            background: transparent;
+            color: {self._colors.text};
+            selection-background-color: {self._colors.focus};
+            selection-color: #ffffff;
+        }}
+        QSpinBox:disabled {{ color: {self._colors.text_muted}; }}
+        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{
+            background: {self._colors.surface};
+            border-left: 1px solid {self._colors.border};
+            width: 22px;
+        }}
+        """
+        self.rows_spin.setStyleSheet(spin_ss)
+        self.cols_spin.setStyleSheet(spin_ss)
         self.rows_spin.setAccessibleName("Rows")
         self.cols_spin.setAccessibleName("Columns")
         update_btn = QPushButton("Update Grid"); update_btn.clicked.connect(self._update_grid); update_btn.setAccessibleName("Update Grid")

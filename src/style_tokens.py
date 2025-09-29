@@ -107,6 +107,23 @@ QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{
 QAbstractSpinBox::up-button {{ subcontrol-origin: border; subcontrol-position: top right; }}
 QAbstractSpinBox::down-button {{ subcontrol-origin: border; subcontrol-position: bottom right; }}
 
+/* Explicit spinbox text field styling (some platforms require child selector) */
+QSpinBox {{
+    background-color: {colors.surface};
+    color: {colors.text};
+    border: 1px solid {colors.border};
+    border-radius: {radius.md}px;
+    padding: {space(1)}px {space(5)}px {space(1)}px {space(2)}px; /* leave space for arrows */
+    min-height: 32px;
+}}
+QSpinBox QLineEdit {{
+    background: transparent;
+    color: {colors.text};
+    selection-background-color: {colors.focus};
+    selection-color: #ffffff;
+}}
+QSpinBox:disabled {{ color: {colors.text_muted}; }}
+
 /* Cards */
 QFrame#card {{
     background-color: {colors.surface};
@@ -149,3 +166,14 @@ def apply_tokens(app, *, theme: str = "light", colors: Colors | None = None, typ
     chosen = colors or (_dark_colors() if str(theme).lower() == "dark" else Colors())
     qss = build_qss(chosen, typo, radius)
     app.setStyleSheet((app.styleSheet() or "") + "\n" + qss)
+
+
+def get_colors(*, theme: str = "light", colors: Colors | None = None) -> Colors:
+    """Return the effective Colors object given a theme or explicit override.
+
+    This mirrors the selection logic in ``apply_tokens`` so code can retrieve
+    the active palette and, for instance, set widget-level palettes.
+    """
+    if colors:
+        return colors
+    return _dark_colors() if str(theme).lower() == "dark" else Colors()
