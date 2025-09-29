@@ -12,7 +12,8 @@ from PySide6.QtCore import (
     Qt, QMimeData, QByteArray, QDataStream, QIODevice, QRect, QSize, QPoint
 )
 from PySide6.QtGui import (
-    QPainter, QPixmap, QImageReader, QColor, QDrag, QAction, QImage
+    QPainter, QPixmap, QImageReader, QColor, QDrag, QAction, QImage,
+    QFont, QFontMetrics, QPainterPath, QPen
 )
 from PySide6.QtWidgets import QMenu
 from PySide6.QtCore import QBuffer, QByteArray
@@ -52,7 +53,22 @@ class CollageCell(QWidget):
         self.cell_id = cell_id
         self.pixmap: Optional[QPixmap] = None
         self.original_pixmap: Optional[QPixmap] = None
+        # Legacy single caption (kept for compatibility)
         self.caption = ""
+        # Meme-style captions
+        self.top_caption: str = ""
+        self.bottom_caption: str = ""
+        self.show_top_caption: bool = True
+        self.show_bottom_caption: bool = True
+        # Caption style (per-cell; can be overridden from UI)
+        self.caption_font_family: str = "Impact"
+        self.caption_min_size: int = 12
+        self.caption_max_size: int = 48
+        self.caption_uppercase: bool = True
+        self.caption_stroke_width: int = 3
+        self.caption_stroke_color: QColor = QColor(0, 0, 0)
+        self.caption_fill_color: QColor = QColor(255, 255, 255)
+        self.caption_safe_margin_ratio: float = 0.04  # relative to image rect
         self.use_caption_formatting = True
 
         # Default caption formatting
@@ -101,9 +117,15 @@ class CollageCell(QWidget):
             if not self.pixmap:
                 self._draw_placeholder(painter)
                 return
-            self._draw_image(painter)
-            if self.caption:
-                self._draw_caption(painter)
+            img_rect = self._draw_image(painter)
+            # Legacy single-caption support
+            if self.caption and not self.top_caption and not self.bottom_caption:
+                self._draw_legacy_caption(painter)
+            # Meme-style captions
+            if self.show_top_caption and self.top_caption:
+                self._draw_meme_caption(painter, img_rect, self.top_caption, position="top")
+            if self.show_bottom_caption and self.bottom_caption:
+                self._draw_meme_caption(painter, img_rect, self.bottom_caption, position="bottom")
         finally:
             painter.end()
 
@@ -114,14 +136,16 @@ class CollageCell(QWidget):
         font = painter.font(); font.setPointSize(10); painter.setFont(font)
         painter.drawText(rect, Qt.AlignCenter, "Drop Image Here\nCtrl+Click to Select")
 
-    def _draw_image(self, painter: QPainter) -> None:
+    def _draw_image(self, painter: QPainter) -> QRect:
         rect = self.rect()
         scaled = self.pixmap.scaled(rect.size(), self.aspect_ratio_mode, self.transformation_mode)
         x = (rect.width() - scaled.width()) // 2
         y = (rect.height() - scaled.height()) // 2
-        painter.drawPixmap(QRect(x, y, scaled.width(), scaled.height()), scaled)
+        target = QRect(x, y, scaled.width(), scaled.height())
+        painter.drawPixmap(target, scaled)
+        return target
 
-    def _draw_caption(self, painter: QPainter) -> None:
+    def _draw_legacy_caption(self, painter: QPainter) -> None:
         rect = self.rect()
         font = painter.font()
         if self.use_caption_formatting:
@@ -141,6 +165,93 @@ class CollageCell(QWidget):
         painter.drawText(text_rect.translated(1, 1), Qt.AlignCenter, self.caption)
         painter.setPen(Qt.white)
         painter.drawText(text_rect, Qt.AlignCenter, self.caption)
+
+    # --- Meme-style caption rendering ---
+    def _draw_meme_caption(self, painter: QPainter, image_rect: QRect, text: str, *, position: str) -> None:
+        if not text:
+            return
+        t = text.upper() if self.caption_uppercase else text
+        # Safe area and area height (30% of image height for captions)
+        margin = int(self.caption_safe_margin_ratio * min(image_rect.width(), image_rect.height()))
+        area_width = max(1, image_rect.width() - 2 * margin)
+        area_height = max(1, int(image_rect.height() * 0.30) - margin)
+        if position == "top":
+            area_top = image_rect.top() + margin
+        else:
+            area_top = image_rect.bottom() - margin - area_height
+        area_left = image_rect.left() + margin
+
+        # Find font size and wrapped lines that fit
+        font, lines, line_spacing, ascent = self._fit_text(t, area_width, area_height)
+        painter.setFont(font)
+
+        # Prepare stroke and fill
+        pen = QPen(self.caption_stroke_color)
+        pen.setWidth(self.caption_stroke_width)
+        pen.setJoinStyle(Qt.RoundJoin)
+        painter.setPen(pen)
+        painter.setBrush(self.caption_fill_color)
+
+        metrics = QFontMetrics(font)
+        total_text_height = len(lines) * line_spacing - (line_spacing - metrics.ascent())
+        y = area_top + max(0, (area_height - total_text_height) // 2) + ascent
+        for line in lines:
+            w = metrics.horizontalAdvance(line)
+            x = area_left + max(0, (area_width - w) // 2)
+            path = QPainterPath()
+            path.addText(x, y, font, line)
+            painter.drawPath(path)
+            y += line_spacing
+
+    def _fit_text(self, text: str, max_w: int, max_h: int) -> tuple[QFont, list[str], int, int]:
+        """Return (font, lines, line_spacing, ascent) fitting text in area.
+
+        Shrinks from max_size to min_size; wraps by words. On overflow at
+        min_size, ellipsizes the last line.
+        """
+        words = text.split()
+        for size in range(self.caption_max_size, self.caption_min_size - 1, -1):
+            font = QFont(self.caption_font_family, pointSize=size)
+            font.setBold(True)
+            metrics = QFontMetrics(font)
+            line_spacing = metrics.lineSpacing()
+            ascent = metrics.ascent()
+            lines: list[str] = []
+            line = ""
+            for i, w in enumerate(words):
+                trial = (line + " " + w).strip()
+                if metrics.horizontalAdvance(trial) <= max_w or not line:
+                    line = trial
+                else:
+                    lines.append(line)
+                    line = w
+            if line:
+                lines.append(line)
+            total_h = len(lines) * line_spacing
+            if total_h <= max_h:
+                return font, lines, line_spacing, ascent
+        # Ellipsize last line at min font
+        font = QFont(self.caption_font_family, pointSize=self.caption_min_size)
+        font.setBold(True)
+        metrics = QFontMetrics(font)
+        line_spacing = metrics.lineSpacing()
+        ascent = metrics.ascent()
+        lines = []
+        line = ""
+        for i, w in enumerate(words):
+            trial = (line + " " + w).strip()
+            if metrics.horizontalAdvance(trial + "…") <= max_w or not line:
+                line = trial
+            else:
+                lines.append(line)
+                line = w
+        if line:
+            # Ensure last line with ellipsis fits
+            l = line
+            while metrics.horizontalAdvance(l + "…") > max_w and l:
+                l = l[:-1]
+            lines.append((l + "…") if l else line[: max(0, len(line) - 1)] + "…")
+        return font, lines, line_spacing, ascent
 
     def mousePressEvent(self, event):
         if event.button() != Qt.LeftButton:

@@ -10,8 +10,9 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
     QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
-    QFrame
+    QFrame, QPlainTextEdit, QColorDialog, QToolButton
 )
+from PySide6.QtWidgets import QFontComboBox
 from PySide6.QtCore import Qt, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
 from dataclasses import dataclass
@@ -70,6 +71,7 @@ class MainWindow(QMainWindow):
 
         # Controls and collage
         main_layout.addLayout(self._create_controls())
+        main_layout.addLayout(self._create_caption_panel())
         self.collage = CollageWidget(
             rows=self.rows_spin.value(),
             columns=self.cols_spin.value(),
@@ -170,6 +172,93 @@ class MainWindow(QMainWindow):
         layout.addWidget(save_btn)
 
         return layout
+
+    # --- Caption Panel ---
+    def _create_caption_panel(self):
+        layout = QHBoxLayout()
+        # Text inputs
+        self.top_edit = QPlainTextEdit(); self.top_edit.setPlaceholderText("Top Caption")
+        self.bottom_edit = QPlainTextEdit(); self.bottom_edit.setPlaceholderText("Bottom Caption")
+        self.top_edit.setFixedHeight(48); self.bottom_edit.setFixedHeight(48)
+        layout.addWidget(QLabel("Top:")); layout.addWidget(self.top_edit)
+        layout.addWidget(QLabel("Bottom:")); layout.addWidget(self.bottom_edit)
+
+        # Visibility toggles
+        self.top_visible_chk = QCheckBox("Show Top"); self.top_visible_chk.setChecked(True)
+        self.bottom_visible_chk = QCheckBox("Show Bottom"); self.bottom_visible_chk.setChecked(True)
+        layout.addWidget(self.top_visible_chk); layout.addWidget(self.bottom_visible_chk)
+
+        # Style controls (shared)
+        self.font_combo = QFontComboBox(); self.font_combo.setCurrentText("Impact")
+        self.min_size_spin = QSpinBox(); self.min_size_spin.setRange(6, 64); self.min_size_spin.setValue(12)
+        self.max_size_spin = QSpinBox(); self.max_size_spin.setRange(8, 128); self.max_size_spin.setValue(48)
+        self.stroke_width_spin = QSpinBox(); self.stroke_width_spin.setRange(0, 16); self.stroke_width_spin.setValue(3)
+        self.uppercase_chk = QCheckBox("UPPERCASE"); self.uppercase_chk.setChecked(True)
+        self.stroke_btn = QPushButton("Stroke Color")
+        self.fill_btn = QPushButton("Fill Color")
+        layout.addWidget(QLabel("Font:")); layout.addWidget(self.font_combo)
+        layout.addWidget(QLabel("Min:")); layout.addWidget(self.min_size_spin)
+        layout.addWidget(QLabel("Max:")); layout.addWidget(self.max_size_spin)
+        layout.addWidget(QLabel("Stroke:")); layout.addWidget(self.stroke_width_spin)
+        layout.addWidget(self.stroke_btn); layout.addWidget(self.fill_btn)
+        layout.addWidget(self.uppercase_chk)
+
+        # Debounce timer for live preview
+        from PySide6.QtCore import QTimer
+        self.caption_timer = QTimer(self); self.caption_timer.setSingleShot(True); self.caption_timer.setInterval(150)
+        self.caption_timer.timeout.connect(self._apply_captions_now)
+
+        # Wire inputs
+        self.top_edit.textChanged.connect(lambda: self.caption_timer.start())
+        self.bottom_edit.textChanged.connect(lambda: self.caption_timer.start())
+        self.top_visible_chk.toggled.connect(lambda _: self._apply_captions_now())
+        self.bottom_visible_chk.toggled.connect(lambda _: self._apply_captions_now())
+        self.font_combo.currentFontChanged.connect(lambda _: self._apply_captions_now())
+        for sp in (self.min_size_spin, self.max_size_spin, self.stroke_width_spin):
+            sp.valueChanged.connect(lambda _: self._apply_captions_now())
+        self.uppercase_chk.toggled.connect(lambda _: self._apply_captions_now())
+        self.stroke_btn.clicked.connect(lambda: self._pick_color('stroke'))
+        self.fill_btn.clicked.connect(lambda: self._pick_color('fill'))
+
+        # Shortcuts
+        QShortcut(QKeySequence("T"), self, activated=lambda: self.top_edit.setFocus())
+        QShortcut(QKeySequence("B"), self, activated=lambda: self.bottom_edit.setFocus())
+        QShortcut(QKeySequence("Ctrl+Return"), self, activated=self._apply_captions_now)
+
+        return layout
+
+    def _pick_color(self, which: str):
+        col = QColorDialog.getColor(parent=self)
+        if not col.isValid():
+            return
+        # Apply to selection immediately
+        for cell in [c for c in self.collage.cells if getattr(c, 'selected', False)]:
+            if which == 'stroke':
+                cell.caption_stroke_color = col
+            else:
+                cell.caption_fill_color = col
+            cell.update()
+
+    def _apply_captions_now(self):
+        top_text = self.top_edit.toPlainText()
+        bottom_text = self.bottom_edit.toPlainText()
+        show_top = self.top_visible_chk.isChecked()
+        show_bottom = self.bottom_visible_chk.isChecked()
+        family = self.font_combo.currentFont().family()
+        min_sz = self.min_size_spin.value(); max_sz = self.max_size_spin.value()
+        stroke_w = self.stroke_width_spin.value()
+        upper = self.uppercase_chk.isChecked()
+        for cell in [c for c in self.collage.cells if getattr(c, 'selected', False)]:
+            cell.top_caption = top_text
+            cell.bottom_caption = bottom_text
+            cell.show_top_caption = show_top
+            cell.show_bottom_caption = show_bottom
+            cell.caption_font_family = family
+            cell.caption_min_size = min_sz
+            cell.caption_max_size = max_sz
+            cell.caption_stroke_width = stroke_w
+            cell.caption_uppercase = upper
+            cell.update()
 
     def _create_shortcuts(self):
         QShortcut(QKeySequence(config.SAVE_SHORTCUT),
