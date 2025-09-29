@@ -88,6 +88,25 @@ QComboBox {{
 QComboBox::drop-down {{ width: 22px; border-left: 1px solid {colors.border}; }}
 QComboBox QAbstractItemView {{ border: 1px solid {colors.border}; selection-background-color: {colors.primary}; selection-color: #ffffff; }}
 
+/* Spin boxes and line edits */
+QAbstractSpinBox, QLineEdit {{
+    background-color: {colors.surface};
+    color: {colors.text};
+    border: 1px solid {colors.border};
+    border-radius: {radius.md}px;
+    padding: {space(1)}px {space(2)}px;
+    min-height: 32px;
+    selection-background-color: {colors.focus};
+    selection-color: #ffffff;
+}}
+QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{
+    background: {colors.surface};
+    border-left: 1px solid {colors.border};
+    width: 22px;
+}}
+QAbstractSpinBox::up-button {{ subcontrol-origin: border; subcontrol-position: top right; }}
+QAbstractSpinBox::down-button {{ subcontrol-origin: border; subcontrol-position: bottom right; }}
+
 /* Cards */
 QFrame#card {{
     background-color: {colors.surface};
