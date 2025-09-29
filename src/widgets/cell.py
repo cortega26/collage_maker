@@ -12,9 +12,9 @@ from PySide6.QtCore import (
     Qt, QMimeData, QByteArray, QDataStream, QIODevice, QRect, QSize, QPoint
 )
 from PySide6.QtGui import (
-    QPainter, QPixmap, QImageReader, QColor, QDrag, QGuiApplication
+    QPainter, QPixmap, QImageReader, QColor, QDrag, QAction, QImage
 )
-from PySide6.QtWidgets import QMenu, QAction
+from PySide6.QtWidgets import QMenu
 from PySide6.QtCore import QBuffer, QByteArray
 
 from .. import config
@@ -228,7 +228,7 @@ class CollageCell(QWidget):
         out = BytesIO()
         pil_img.save(out, format='PNG')
         ba = QByteArray(out.getvalue())
-        qimg = QImageReader.fromData(ba, b"PNG").read()
+        qimg = QImage.fromData(ba, 'PNG')
         return QPixmap.fromImage(qimg)
 
     def _apply_pil_filter(self, name: str) -> None:
