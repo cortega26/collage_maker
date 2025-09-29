@@ -37,10 +37,11 @@ class ImageOptimizer:
 
         # Perform scaling if needed
         if image.size() != scaled_target:
+            # Use positional args for PySide6 compatibility
             image = image.scaled(
                 scaled_target,
-                aspectMode=Qt.KeepAspectRatio,
-                transformMode=Qt.SmoothTransformation
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
             )
 
         return image
