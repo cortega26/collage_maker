@@ -43,3 +43,6 @@ QUALITY_MIN = 1
 QUALITY_MAX = 100
 QUALITY_DEFAULT = 95
 RESOLUTION_MULTIPLIERS = [1, 2, 4]
+
+# Export limits
+MAX_EXPORT_DIMENSION = 10000  # Clamp largest side when exporting to avoid huge images

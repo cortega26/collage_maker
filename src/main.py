@@ -232,14 +232,33 @@ class MainWindow(QMainWindow):
         return path if path.lower().endswith(f".{fmt}") else f"{path}.{fmt}"
 
     def _render_scaled_pixmap(self, resolution: int) -> QPixmap:
-        base_size = self.collage.size()
-        out_size = QSize(base_size.width()*resolution, base_size.height()*resolution)
-        primary = QPixmap(out_size); primary.fill(Qt.transparent)
-        p = QPainter(primary)
+        """Render the collage at a scaled resolution with DPI awareness and clamping.
+
+        - Multiplies logical size by ``resolution`` and device pixel ratio.
+        - Clamps the largest side to ``config.MAX_EXPORT_DIMENSION`` to avoid excessive memory usage.
+        """
+        base = self.collage.size()
+        dpr = self.devicePixelRatioF() if hasattr(self, 'devicePixelRatioF') else 1.0
+        scale = max(1.0, float(resolution) * float(dpr))
+        out_w = int(base.width() * scale)
+        out_h = int(base.height() * scale)
+        # Clamp to max export dimension
+        max_dim = max(out_w, out_h)
+        if max_dim > config.MAX_EXPORT_DIMENSION:
+            factor = config.MAX_EXPORT_DIMENSION / max_dim
+            out_w = max(1, int(out_w * factor))
+            out_h = max(1, int(out_h * factor))
+
+        # Use QImage for deterministic pixel buffer
+        img = QImage(out_w, out_h, QImage.Format_ARGB32)
+        img.fill(Qt.transparent)
+        p = QPainter(img)
         p.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform | QPainter.TextAntialiasing)
-        p.scale(resolution, resolution)
-        self.collage.render(p); p.end()
-        return primary
+        # Render from logical coordinates scaled to pixel buffer size
+        p.scale(out_w / base.width(), out_h / base.height())
+        self.collage.render(p)
+        p.end()
+        return QPixmap.fromImage(img)
 
     def _add_images(self):
         # Select multiple images and fill empty cells in reading order

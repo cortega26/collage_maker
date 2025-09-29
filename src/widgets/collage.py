@@ -212,11 +212,11 @@ class CollageWidget(QWidget):
             return
         total_w = max(0, self.width() - (self.columns - 1) * self.spacing)
         total_h = max(0, self.height() - (self.rows - 1) * self.spacing)
-        cell_w = total_w // self.columns
-        cell_h = total_h // self.rows
-        size = max(1, min(cell_w, cell_h))
+        cell_w = max(1, total_w // self.columns)
+        cell_h = max(1, total_h // self.rows)
+        # Use per-axis cell sizes to adapt to aspect ratios
         for cell in self.cells:
-            cell.setFixedSize(size, size)
+            cell.setFixedSize(cell_w, cell_h)
 
     def merge_selected(self) -> bool:
         """Convenience: merge all selected cells if they form a rectangle."""
