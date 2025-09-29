@@ -17,10 +17,9 @@ from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage, QC
 from dataclasses import dataclass
 
 from pathlib import Path
-from . import style_tokens
 try:
     # Preferred package-relative imports
-    from . import config
+    from . import config, style_tokens
     from .widgets.collage import CollageWidget
     from .managers.autosave import AutosaveManager
     from .managers.performance import PerformanceMonitor
@@ -29,7 +28,7 @@ except ImportError:
     # Fallback for running `python src/main.py` directly
     import sys as _sys
     _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from src import config
+    from src import config, style_tokens
     from src.widgets.collage import CollageWidget
     from src.managers.autosave import AutosaveManager
     from src.managers.performance import PerformanceMonitor
