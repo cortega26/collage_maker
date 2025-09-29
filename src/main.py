@@ -16,6 +16,7 @@ from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
 from dataclasses import dataclass
 
 from pathlib import Path
+from . import style_tokens
 try:
     # Preferred package-relative imports
     from . import config
@@ -70,7 +71,13 @@ class MainWindow(QMainWindow):
             cell_size=config.DEFAULT_CELL_SIZE
         )
         self.collage.setAccessibleName("Collage Grid")
-        main_layout.addWidget(self.collage, alignment=Qt.AlignCenter)
+        # Wrap in a 'card' frame that uses design tokens
+        from PySide6.QtWidgets import QFrame, QVBoxLayout
+        card = QFrame(); card.setObjectName("card")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.addWidget(self.collage, alignment=Qt.AlignCenter)
+        main_layout.addWidget(card)
 
         # Managers
         self.autosave = AutosaveManager(self, self.get_collage_state)
@@ -369,6 +376,8 @@ if __name__ == '__main__':
     qss = Path(__file__).resolve().parents[1] / 'ui' / 'style.qss'
     if qss.exists():
         app.setStyleSheet(qss.read_text(encoding='utf-8'))
+    # Apply design tokens on top of static QSS
+    style_tokens.apply_tokens(app)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

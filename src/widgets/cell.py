@@ -71,7 +71,6 @@ class CollageCell(QWidget):
 
         self.setAcceptDrops(True)
         self.setFixedSize(cell_size, cell_size)
-        self.setStyleSheet("background-color: transparent;")
         self.selected = False
         self.setFocusPolicy(Qt.StrongFocus)
         self.setAccessibleName(f"Collage Cell {cell_id}")
