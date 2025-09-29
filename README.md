@@ -23,3 +23,19 @@ See `requirements.txt` for the list of modern dependency versions.
 ```bash
 pytest
 ```
+- Meme-style captions (per image): top and bottom text with auto-fit, stroke, fill, uppercase toggle, and live preview. Included in exports.
+
+### Captions
+
+Each image cell supports two optional captions pinned to the top and bottom edges.
+
+- Auto-fit: text wraps and scales between min/max font sizes to fit within safe margins.
+- Legibility: stroke (outline) and fill colors with configurable width.
+- Controls: Top/Bottom text areas, show/hide toggles, font family, min/max size, stroke width/color, fill color, UPPERCASE.
+- Live Preview: typing updates the canvas after ~150ms debounce.
+- Shortcuts: `T` focuses Top, `B` focuses Bottom, `Ctrl+Enter` applies.
+- Export: captions are rasterized and included in PNG/JPEG.
+
+If a caption cannot fit even at minimum size, the last line is ellipsized and the cell shows a tooltip: "Caption too long for image".
+
+Example configuration for styles is provided in `examples/captions.json`.

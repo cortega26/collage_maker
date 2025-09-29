@@ -69,6 +69,9 @@ class CollageCell(QWidget):
         self.caption_stroke_color: QColor = QColor(0, 0, 0)
         self.caption_fill_color: QColor = QColor(255, 255, 255)
         self.caption_safe_margin_ratio: float = 0.04  # relative to image rect
+        # Overflow flags for tooltips
+        self._top_caption_overflow: bool = False
+        self._bottom_caption_overflow: bool = False
         self.use_caption_formatting = True
 
         # Default caption formatting
@@ -122,10 +125,19 @@ class CollageCell(QWidget):
             if self.caption and not self.top_caption and not self.bottom_caption:
                 self._draw_legacy_caption(painter)
             # Meme-style captions
+            self._top_caption_overflow = False
+            self._bottom_caption_overflow = False
             if self.show_top_caption and self.top_caption:
-                self._draw_meme_caption(painter, img_rect, self.top_caption, position="top")
+                self._top_caption_overflow = self._draw_meme_caption(painter, img_rect, self.top_caption, position="top")
             if self.show_bottom_caption and self.bottom_caption:
-                self._draw_meme_caption(painter, img_rect, self.bottom_caption, position="bottom")
+                self._bottom_caption_overflow = self._draw_meme_caption(painter, img_rect, self.bottom_caption, position="bottom")
+            # Update tooltip based on overflow
+            tips = []
+            if self._top_caption_overflow:
+                tips.append("Top caption too long for image")
+            if self._bottom_caption_overflow:
+                tips.append("Bottom caption too long for image")
+            self.setToolTip("; ".join(tips) if tips else "")
         finally:
             painter.end()
 
@@ -167,9 +179,9 @@ class CollageCell(QWidget):
         painter.drawText(text_rect, Qt.AlignCenter, self.caption)
 
     # --- Meme-style caption rendering ---
-    def _draw_meme_caption(self, painter: QPainter, image_rect: QRect, text: str, *, position: str) -> None:
+    def _draw_meme_caption(self, painter: QPainter, image_rect: QRect, text: str, *, position: str) -> bool:
         if not text:
-            return
+            return False
         t = text.upper() if self.caption_uppercase else text
         # Safe area and area height (30% of image height for captions)
         margin = int(self.caption_safe_margin_ratio * min(image_rect.width(), image_rect.height()))
@@ -182,7 +194,7 @@ class CollageCell(QWidget):
         area_left = image_rect.left() + margin
 
         # Find font size and wrapped lines that fit
-        font, lines, line_spacing, ascent = self._fit_text(t, area_width, area_height)
+        font, lines, line_spacing, ascent, overflow = self._fit_text(t, area_width, area_height)
         painter.setFont(font)
 
         # Prepare stroke and fill
@@ -202,8 +214,9 @@ class CollageCell(QWidget):
             path.addText(x, y, font, line)
             painter.drawPath(path)
             y += line_spacing
+        return overflow
 
-    def _fit_text(self, text: str, max_w: int, max_h: int) -> tuple[QFont, list[str], int, int]:
+    def _fit_text(self, text: str, max_w: int, max_h: int) -> tuple[QFont, list[str], int, int, bool]:
         """Return (font, lines, line_spacing, ascent) fitting text in area.
 
         Shrinks from max_size to min_size; wraps by words. On overflow at
@@ -229,7 +242,7 @@ class CollageCell(QWidget):
                 lines.append(line)
             total_h = len(lines) * line_spacing
             if total_h <= max_h:
-                return font, lines, line_spacing, ascent
+                return font, lines, line_spacing, ascent, False
         # Ellipsize last line at min font
         font = QFont(self.caption_font_family, pointSize=self.caption_min_size)
         font.setBold(True)
@@ -251,7 +264,7 @@ class CollageCell(QWidget):
             while metrics.horizontalAdvance(l + "…") > max_w and l:
                 l = l[:-1]
             lines.append((l + "…") if l else line[: max(0, len(line) - 1)] + "…")
-        return font, lines, line_spacing, ascent
+        return font, lines, line_spacing, ascent, True
 
     def mousePressEvent(self, event):
         if event.button() != Qt.LeftButton:
