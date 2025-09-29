@@ -36,7 +36,9 @@ class ErrorRecoveryManager:
     def _recover(self) -> None:
         try:
             state = self.save_state()
-            path = self.parent.autosave_manager.path
+            # Prefer parent's autosave manager path if available; fallback to config
+            autosave_mgr = getattr(self.parent, 'autosave', None)
+            path = getattr(autosave_mgr, 'path', config.AUTOSAVE_PATH)
             fname = f"recovery_{QDateTime.currentDateTime().toString(config.AUTOSAVE_TIMESTAMP_FORMAT)}.json"
             full = os.path.join(path, fname)
             with open(full, 'w', encoding='utf-8') as f:

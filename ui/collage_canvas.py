@@ -1,11 +1,11 @@
 import logging
 from typing import List, Optional, Dict
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QGridLayout, QMessageBox,
     QSizePolicy
 )
-from PyQt5.QtCore import Qt, QSize, pyqtSignal, QTimer
-from PyQt5.QtGui import QPixmap, QPainter, QColor, QImage
+from PySide6.QtCore import Qt, QSize, Signal, QTimer
+from PySide6.QtGui import QPixmap, QPainter, QColor, QImage
 from utils.collage_layouts import CollageLayouts
 from utils.image_processor import ImageProcessor
 from .image_label import ImageLabel
@@ -19,8 +19,8 @@ class CollageCanvas(QWidget):
         layoutChanged: Emitted when the layout changes
     """
     
-    collageUpdated = pyqtSignal()
-    layoutChanged = pyqtSignal(str)  # New signal for layout changes
+    collageUpdated = Signal()
+    layoutChanged = Signal(str)  # New signal for layout changes
     
     # Class constants
     SPACING = 2  # Spacing between images in pixels

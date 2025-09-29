@@ -135,14 +135,17 @@ class ImageProcessor:
     def _save_image(self, image: Image.Image, output_path: Union[str, Path]) -> None:
         """Save an image with optimal settings."""
         path = Path(output_path)
-        format = path.suffix[1:].upper()
-        
+        fmt = path.suffix[1:].upper()
+        if fmt == 'JPG':
+            fmt = 'JPEG'
+
         save_params = {
-            'format': format,
-            'quality': self.QUALITY if format in ['JPEG', 'WEBP'] else None,
+            'format': fmt,
             'optimize': True
         }
-        
+        if fmt in ['JPEG', 'WEBP']:
+            save_params['quality'] = self.QUALITY
+
         image.save(str(path), **save_params)
         
     @staticmethod

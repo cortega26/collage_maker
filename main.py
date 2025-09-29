@@ -76,7 +76,8 @@ class CollageCell(tk.Canvas):
         cell_w, cell_h = self.cell_width, self.cell_height
         ratio = min(cell_w / img.width, cell_h / img.height)
         new_size = (int(img.width * ratio), int(img.height * ratio))
-        resized_img = img.resize(new_size, Image.ANTIALIAS)
+        # Use modern resampling for high-quality results
+        resized_img = img.resize(new_size, Image.Resampling.LANCZOS)
         # Se crea una imagen en blanco del tamaño de la celda (letterboxing)
         new_img = Image.new("RGB", (cell_w, cell_h), (255, 255, 255))
         paste_x = (cell_w - new_size[0]) // 2

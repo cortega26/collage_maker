@@ -208,11 +208,12 @@ class CollageWidget(QWidget):
         selected = [(cell, self.get_cell_position(cell)) for cell in self.cells if cell.selected]
         if len(selected) < 2:
             return False
-        rows = [pos[1] for _, pos in selected]
-        cols = [pos[0] for _, pos in selected]
+        # get_cell_position returns (row, col)
+        rows = [pos[0] for _, pos in selected]
+        cols = [pos[1] for _, pos in selected]
         min_r, max_r = min(rows), max(rows)
         min_c, max_c = min(cols), max(cols)
-        return self.merge_cells(min_c, min_r, max_c-min_c+1, max_r-min_r+1)
+        return self.merge_cells(min_r, min_c, max_r - min_r + 1, max_c - min_c + 1)
 
     def clear(self) -> None:
         """Reset entire grid to initial empty state."""

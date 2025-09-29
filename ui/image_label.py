@@ -1,14 +1,14 @@
 import logging
 from typing import Optional
-from PyQt5.QtWidgets import QLabel, QMenu, QAction
-from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QPixmap, QDragEnterEvent, QDropEvent, QPainter, QColor
+from PySide6.QtWidgets import QLabel, QMenu, QAction
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QPixmap, QDragEnterEvent, QDropEvent, QPainter, QColor
 from utils.image_processor import ImageProcessor
 
 class ImageLabel(QLabel):
     """A custom QLabel for handling image display and drag-drop."""
     
-    imageDropped = pyqtSignal()
+    imageDropped = Signal()
 
     def __init__(self):
         """Initialize the ImageLabel widget."""
@@ -35,7 +35,7 @@ class ImageLabel(QLabel):
         clear_action = QAction("Clear Image", self)
         clear_action.triggered.connect(self.clear)
         menu.addAction(clear_action)
-        menu.exec_(self.mapToGlobal(position))
+        menu.exec(self.mapToGlobal(position))
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         """Handle drag enter events."""

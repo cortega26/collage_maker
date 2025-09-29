@@ -41,6 +41,6 @@ class PerformanceMonitor:
             logging.warning("Memory check failed: %s", e)
 
     def _optimize(self) -> None:
-        image_cache._cleanup()
+        image_cache.cleanup()
         gc.collect()
         logging.info("PerformanceMonitor: memory optimization executed")

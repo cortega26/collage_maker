@@ -61,6 +61,12 @@ class ImageCache:
         with self._lock:
             self._cache.clear()
 
+    # Public wrapper to avoid using a private method from callers
+    def cleanup(self) -> None:
+        """Evict least-recently-used entries down to half capacity."""
+        with self._lock:
+            self._cleanup()
+
 
 # Global cache instance used throughout the application
 image_cache = ImageCache()
