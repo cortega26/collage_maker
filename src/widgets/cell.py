@@ -103,7 +103,7 @@ class CollageCell(QWidget):
                 painter.drawText(
                     rect,
                     Qt.AlignCenter,
-                    "Drop Image Here\nClick to Select"
+                    "Drop Image Here\nCtrl+Click to Select"
                 )
                 return
 

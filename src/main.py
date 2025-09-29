@@ -90,12 +90,17 @@ class MainWindow(QMainWindow):
         self.rows_spin = QSpinBox(); self.rows_spin.setRange(1,10); self.rows_spin.setValue(config.DEFAULT_ROWS)
         self.cols_spin = QSpinBox(); self.cols_spin.setRange(1,10); self.cols_spin.setValue(config.DEFAULT_COLUMNS)
         update_btn = QPushButton("Update Grid"); update_btn.clicked.connect(self._update_grid)
+        update_btn.setToolTip("Apply rows/cols to rebuild the grid")
         layout.addWidget(QLabel("Rows:")); layout.addWidget(self.rows_spin)
         layout.addWidget(QLabel("Cols:")); layout.addWidget(self.cols_spin)
         layout.addWidget(update_btn)
 
         # Save controls
-        save_btn = QPushButton("Save Collage"); save_btn.clicked.connect(self._show_save_dialog)
+        add_btn = QPushButton("Add Images…"); add_btn.clicked.connect(self._add_images); add_btn.setToolTip("Add images to empty cells")
+        layout.addWidget(add_btn)
+        clear_btn = QPushButton("Clear All"); clear_btn.clicked.connect(self._reset_collage); clear_btn.setToolTip("Clear all images and merges")
+        layout.addWidget(clear_btn)
+        save_btn = QPushButton("Save Collage"); save_btn.clicked.connect(self._show_save_dialog); save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP")
         layout.addWidget(save_btn)
 
         return layout
@@ -147,12 +152,12 @@ class MainWindow(QMainWindow):
         dlg_layout.addWidget(self.original_checkbox)
 
         # Format combo
-        self.format_combo = QComboBox(); self.format_combo.addItems(["PNG","JPEG","WebP"])
+        self.format_combo = QComboBox(); self.format_combo.addItems(["PNG","JPEG","WEBP"])
         dlg_layout.addWidget(self.format_combo)
 
         # Quality slider
         self.quality_slider = QSlider(Qt.Horizontal); self.quality_slider.setRange(config.QUALITY_MIN, config.QUALITY_MAX); self.quality_slider.setValue(config.QUALITY_DEFAULT)
-        dlg_layout.addWidget(QLabel("Quality:")); dlg_layout.addWidget(self.quality_slider)
+        dlg_layout.addWidget(QLabel("Quality / Compression:")); dlg_layout.addWidget(self.quality_slider)
 
         # Resolution multiplier
         self.res_combo = QComboBox(); self.res_combo.addItems([f"{m}x" for m in config.RESOLUTION_MULTIPLIERS])
@@ -217,6 +222,37 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logging.error("Save failed: %s", e)
             QMessageBox.critical(self, "Error", f"Could not save collage: {e}")
+
+    def _add_images(self):
+        # Select multiple images and fill empty cells in reading order
+        exts = [f"*.{e}" for e in config.SUPPORTED_IMAGE_FORMATS]
+        pattern = " ".join(exts)
+        files, _ = QFileDialog.getOpenFileNames(self, "Add Images", QStandardPaths.writableLocation(QStandardPaths.PicturesLocation) or "", f"Images ({pattern})")
+        if not files:
+            return
+        # Collect empty cells
+        empty_cells = [c for c in self.collage.cells if not getattr(c, 'pixmap', None)]
+        if not empty_cells:
+            QMessageBox.information(self, "No Empty Cells", "All cells already contain images.")
+            return
+        assigned = 0
+        for path, cell in zip(files, empty_cells):
+            try:
+                reader = QImageReader(path)
+                reader.setAutoTransform(True)
+                img = reader.read()
+                if img.isNull():
+                    logging.warning("Skipping invalid image: %s", path)
+                    continue
+                # Optimize for current cell size
+                from .optimizer import ImageOptimizer
+                optimized = ImageOptimizer.optimize_image(img, cell.size())
+                cell.setImage(QPixmap.fromImage(optimized))
+                assigned += 1
+            except Exception as e:
+                logging.warning("Failed to add image %s: %s", path, e)
+        if assigned < len(files):
+            QMessageBox.information(self, "Some files skipped", f"Added {assigned} images; others could not be loaded or no empty cells left.")
 
     def _convert_for_jpeg(self, pix: QPixmap) -> QPixmap:
         img = pix.toImage()
