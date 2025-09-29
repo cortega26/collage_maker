@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Tuple, List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 import logging
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 import hashlib
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 from src.cache import ImageCache
 from .image_operations import apply_operations
@@ -108,6 +108,15 @@ class ImageProcessor:
                 
             # Process image
             with Image.open(safe_path) as img:
+                # Fast-path: if a resize op exists, request decoder downscale first
+                target = self._target_size_from_ops(operations)
+                if target:
+                    try:
+                        img.draft(img.mode, target)
+                    except Exception:
+                        pass
+                # Normalize orientation once
+                img = ImageOps.exif_transpose(img)
                 result = self._apply_operations(img, operations)
                 
                 # Cache result
@@ -116,7 +125,7 @@ class ImageProcessor:
                 # Save if output path provided
                 if output_path:
                     self._save_image(result, output_path)
-                    
+                
                 return result
                 
         except Exception as e:
@@ -139,14 +148,40 @@ class ImageProcessor:
         if fmt == 'JPG':
             fmt = 'JPEG'
 
-        save_params = {
-            'format': fmt,
-            'optimize': True
-        }
-        if fmt in ['JPEG', 'WEBP']:
-            save_params['quality'] = self.QUALITY
+        save_params: Dict[str, Any] = {'format': fmt}
+        if fmt == 'JPEG':
+            save_params.update({
+                'quality': self.QUALITY,
+                'optimize': True,
+                'progressive': True,
+                'subsampling': '2x2,1x1,1x1',
+            })
+        elif fmt == 'WEBP':
+            save_params.update({
+                'quality': self.QUALITY,
+                'method': 6,
+            })
+        elif fmt == 'PNG':
+            save_params.update({
+                'optimize': True,
+                'compress_level': 6,
+            })
 
         image.save(str(path), **save_params)
+
+    @staticmethod
+    def _target_size_from_ops(operations: List[Dict[str, Any]]) -> Optional[Tuple[int, int]]:
+        """Return target size if a resize operation is requested.
+
+        Used to hint decoders (via ``draft``) to downscale early for large inputs.
+        """
+        for op in operations:
+            if op.get('type') == 'resize':
+                params = op.get('params', {})
+                size = params.get('size')
+                if isinstance(size, (list, tuple)) and len(size) == 2:
+                    return int(size[0]), int(size[1])
+        return None
         
     @staticmethod
     def get_image_info(image_path: Union[str, Path]) -> ImageInfo:
@@ -179,7 +214,9 @@ class ImageProcessor:
         self,
         image_paths: List[Union[str, Path]],
         operations: List[Dict[str, Any]],
-        output_dir: Union[str, Path]
+        output_dir: Union[str, Path],
+        *,
+        use_processes: bool = False
     ) -> Dict[str, bool]:
         """
         Process multiple images in parallel.
@@ -195,7 +232,7 @@ class ImageProcessor:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        results = {}
+        results: Dict[str, bool] = {}
         futures = []
 
         for path in image_paths:
@@ -207,13 +244,19 @@ class ImageProcessor:
                 continue
 
             output_path = output_dir / input_path.name
-            future = self._thread_pool.submit(
-                self.process_image,
-                input_path,
-                operations,
-                output_path
-            )
-            futures.append((path, future))
+            if use_processes:
+                if not hasattr(self, '_proc_pool'):
+                    self._proc_pool = ProcessPoolExecutor()
+                future = self._proc_pool.submit(_process_image_job, str(input_path), operations, str(output_path))
+                futures.append((path, future))
+            else:
+                future = self._thread_pool.submit(
+                    self.process_image,
+                    input_path,
+                    operations,
+                    output_path
+                )
+                futures.append((path, future))
             
         for path, future in futures:
             try:
@@ -224,3 +267,16 @@ class ImageProcessor:
                 results[str(path)] = False
                 
         return results
+
+
+def _process_image_job(image_path: str, operations: List[Dict[str, Any]], output_path: Optional[str]) -> bool:
+    """Helper to process an image in a separate process.
+
+    Returns True on success; exceptions propagate to caller for logging.
+    """
+    try:
+        proc = ImageProcessor()
+        proc.process_image(image_path, operations, output_path)
+        return True
+    except Exception:
+        return False
