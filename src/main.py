@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
     QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox
 )
-from PySide6.QtCore import Qt, QSize, QPoint
+from PySide6.QtCore import Qt, QSize, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
 
 import config
@@ -173,7 +173,18 @@ class MainWindow(QMainWindow):
             self.collage.render(p); p.end()
 
             # Get filename
-            path, _ = QFileDialog.getSaveFileName(self, "Save Collage", '', f"{opts['format'].upper()} (*.{opts['format']})")
+            options = QFileDialog.Options()
+            # Work around localized known-folder paths on Windows by avoiding native dialog
+            if sys.platform.startswith('win'):
+                options |= QFileDialog.DontUseNativeDialog
+            pictures_dir = QStandardPaths.writableLocation(QStandardPaths.PicturesLocation) or ''
+            path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Save Collage",
+                pictures_dir,
+                f"{opts['format'].upper()} (*.{opts['format']})",
+                options=options,
+            )
             if not path:
                 return
             if not path.lower().endswith(f".{opts['format']}"):

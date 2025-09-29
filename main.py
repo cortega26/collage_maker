@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
+from pathlib import Path
 
 from utils.validation import validate_image_path, validate_output_path
 from utils.image_processor import ImageProcessor
@@ -169,7 +170,7 @@ class CollageMakerApp(tk.Tk if not USE_DND else TkinterDnD.Tk):
 
         tk.Label(control_frame, text="Formato salida:").pack(side="left")
         format_option = ttk.Combobox(control_frame, textvariable=self.selected_format,
-                                     values=["PNG", "webp"], width=5, state="readonly")
+                                     values=["PNG", "WEBP"], width=5, state="readonly")
         format_option.pack(side="left")
 
         tk.Button(control_frame, text="Guardar Collage",
@@ -213,12 +214,20 @@ class CollageMakerApp(tk.Tk if not USE_DND else TkinterDnD.Tk):
                         cell.processed_image, (c * self.cell_width, r * self.cell_height))
         # Diálogo para guardar, permitiendo elegir PNG o webp
         filetypes = [("PNG", "*.png"), ("WebP", "*.webp")]
-        file_path = filedialog.asksaveasfilename(defaultextension="." + self.selected_format.get().lower(),
-                                                 filetypes=filetypes)
+        # Prefer a stable, real filesystem path (avoids localized alias issues)
+        pictures = Path.home() / "Pictures"
+        initial_dir = str(pictures if pictures.exists() else Path.home())
+        file_path = filedialog.asksaveasfilename(
+            title="Guardar Collage",
+            defaultextension="." + self.selected_format.get().lower(),
+            filetypes=filetypes,
+            initialdir=initial_dir
+        )
         if file_path:
             try:
                 safe_path = validate_output_path(file_path, {'.png', '.webp'})
-                collage_img.save(safe_path, self.selected_format.get())
+                fmt = self.selected_format.get().upper()
+                collage_img.save(str(safe_path), fmt)
                 messagebox.showinfo(
                     "Guardado", "Collage guardado exitosamente.")
             except Exception as e:
