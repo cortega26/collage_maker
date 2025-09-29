@@ -14,7 +14,7 @@ These instructions apply to the entire repository.
 - UI toolkit: PySide6 only. Do not introduce or re‑introduce PyQt5 APIs.
   - Use `from PySide6...` imports, `Signal` (not `pyqtSignal`), and `menu.exec(...)` (not `exec_`).
 - Imaging: Pillow (PIL). Prefer `Image.Resampling.LANCZOS` for resizing.
-- DnD (Tk demo): `tkinterdnd2` is optional; do not make it a hard dependency for tests.
+  
 - Do not add new third‑party dependencies without a compelling reason.
 
 ## Project Structure (quick map)

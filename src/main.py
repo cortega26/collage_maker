@@ -14,12 +14,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
 
-import config
+from . import config
 from pathlib import Path
-from widgets.collage import CollageWidget
-from managers.autosave import AutosaveManager
-from managers.performance import PerformanceMonitor
-from managers.recovery import ErrorRecoveryManager
+from .widgets.collage import CollageWidget
+from .managers.autosave import AutosaveManager
+from .managers.performance import PerformanceMonitor
+from .managers.recovery import ErrorRecoveryManager
 
 # Configure logging
 logging.basicConfig(
