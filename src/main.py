@@ -69,6 +69,7 @@ class MainWindow(QMainWindow):
             columns=self.cols_spin.value(),
             cell_size=config.DEFAULT_CELL_SIZE
         )
+        self.collage.setAccessibleName("Collage Grid")
         main_layout.addWidget(self.collage, alignment=Qt.AlignCenter)
 
         # Managers
@@ -90,18 +91,20 @@ class MainWindow(QMainWindow):
         # Grid controls
         self.rows_spin = QSpinBox(); self.rows_spin.setRange(1,10); self.rows_spin.setValue(config.DEFAULT_ROWS)
         self.cols_spin = QSpinBox(); self.cols_spin.setRange(1,10); self.cols_spin.setValue(config.DEFAULT_COLUMNS)
-        update_btn = QPushButton("Update Grid"); update_btn.clicked.connect(self._update_grid)
+        self.rows_spin.setAccessibleName("Rows")
+        self.cols_spin.setAccessibleName("Columns")
+        update_btn = QPushButton("Update Grid"); update_btn.clicked.connect(self._update_grid); update_btn.setAccessibleName("Update Grid")
         update_btn.setToolTip("Apply rows/cols to rebuild the grid")
         layout.addWidget(QLabel("Rows:")); layout.addWidget(self.rows_spin)
         layout.addWidget(QLabel("Cols:")); layout.addWidget(self.cols_spin)
         layout.addWidget(update_btn)
 
         # Save controls
-        add_btn = QPushButton("Add Images…"); add_btn.clicked.connect(self._add_images); add_btn.setToolTip("Add images to empty cells")
+        add_btn = QPushButton("Add Images…"); add_btn.clicked.connect(self._add_images); add_btn.setToolTip("Add images to empty cells"); add_btn.setAccessibleName("Add Images")
         layout.addWidget(add_btn)
-        clear_btn = QPushButton("Clear All"); clear_btn.clicked.connect(self._reset_collage); clear_btn.setToolTip("Clear all images and merges")
+        clear_btn = QPushButton("Clear All"); clear_btn.clicked.connect(self._reset_collage); clear_btn.setToolTip("Clear all images and merges"); clear_btn.setAccessibleName("Clear All")
         layout.addWidget(clear_btn)
-        save_btn = QPushButton("Save Collage"); save_btn.clicked.connect(self._show_save_dialog); save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP")
+        save_btn = QPushButton("Save Collage"); save_btn.clicked.connect(self._show_save_dialog); save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP"); save_btn.setAccessibleName("Save Collage")
         layout.addWidget(save_btn)
 
         return layout
@@ -113,6 +116,8 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence.Redo, self, activated=self._redo)
         QShortcut(QKeySequence.SelectAll, self, activated=self._select_all)
         QShortcut(QKeySequence.Delete, self, activated=self._delete_selected)
+        QShortcut(QKeySequence("Ctrl+O"), self, activated=self._add_images)
+        QShortcut(QKeySequence("Ctrl+Shift+C"), self, activated=self._reset_collage)
 
     def _update_grid(self):
         self.collage.update_grid(self.rows_spin.value(), self.cols_spin.value())
@@ -150,7 +155,10 @@ class MainWindow(QMainWindow):
             primary = self._render_scaled_pixmap(opts.resolution)
             if opts.format in ('jpeg','jpg'):
                 primary = self._convert_for_jpeg(primary)
-            primary.save(path, opts.format, opts.quality)
+            # Add basic metadata for accessibility/compatibility
+            img = primary.toImage()
+            img.setText("Software", "Collage Maker")
+            img.save(path, opts.format, opts.quality)
             logging.info("Saved collage to %s", path)
 
             if opts.save_original:

@@ -68,6 +68,8 @@ class CollageCell(QWidget):
         self.setFixedSize(cell_size, cell_size)
         self.setStyleSheet("background-color: transparent;")
         self.selected = False
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setAccessibleName(f"Collage Cell {cell_id}")
 
         logging.info("Cell %d created; size %dx%d", cell_id, cell_size, cell_size)
 
@@ -172,6 +174,21 @@ class CollageCell(QWidget):
             self.caption = new_caption
             self.update()
             logging.info("Cell %d: caption='%s'", self.cell_id, self.caption)
+
+    def keyPressEvent(self, event):
+        """Basic keyboard accessibility: Space toggles selection; Delete clears; Enter edits caption."""
+        if event.key() in (Qt.Key_Space,):
+            self.selected = not self.selected
+            self.update()
+            event.accept(); return
+        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            self.clearImage()
+            event.accept(); return
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            if self.pixmap:
+                self.mouseDoubleClickEvent(None)
+                event.accept(); return
+        super().keyPressEvent(event)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls() or event.mimeData().hasFormat("application/x-pixmap"):

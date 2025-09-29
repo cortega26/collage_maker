@@ -1,7 +1,7 @@
 /* Base */
 QWidget {
     font-family: "Segoe UI", "Inter", system-ui;
-    font-size: 10pt;
+    font-size: 11pt; /* improve legibility */
     color: #1f2937;
 }
 
@@ -12,17 +12,17 @@ QMainWindow {
 
 /* Buttons */
 QPushButton {
-    background-color: #0d6efd;
+    background-color: #0a58ca; /* higher contrast vs white text */
     color: #ffffff;
-    border: 1px solid #0d6efd;
+    border: 1px solid #0a58ca;
     border-radius: 6px;
     padding: 6px 14px;
     min-height: 28px;
 }
-QPushButton:hover { background-color: #0b5ed7; border-color: #0b5ed7; }
-QPushButton:pressed { background-color: #0a58ca; border-color: #0a58ca; }
+QPushButton:hover { background-color: #094db3; border-color: #094db3; }
+QPushButton:pressed { background-color: #083a9b; border-color: #083a9b; }
 QPushButton:disabled { background-color: #e5e7eb; border-color: #e5e7eb; color: #9ca3af; }
-QPushButton:focus { outline: none; border: 1px solid #80bdff; }
+QPushButton:focus { outline: none; border: 2px solid #1d4ed8; }
 
 /* ComboBox */
 QComboBox {
@@ -47,8 +47,9 @@ ImageLabel {
     background-color: #ffffff;
     color: #6b7280;
 }
-ImageLabel:hover { border-color: #0d6efd; }
+ImageLabel:hover { border-color: #1d4ed8; }
 ImageLabel[hasImage="true"] { border: 1px solid #e5e7eb; border-radius: 6px; }
+ImageLabel:focus { border-color: #1d4ed8; }
 
 /* Collage Canvas */
 CollageCanvas {
