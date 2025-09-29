@@ -10,10 +10,10 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
     QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
-    QFrame
+    QFrame, QPlainTextEdit, QFontComboBox, QColorDialog
 )
 from PySide6.QtCore import Qt, QPoint, QStandardPaths
-from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
+from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage, QImageReader
 from dataclasses import dataclass
 
 from pathlib import Path
@@ -63,13 +63,16 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
+        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setSpacing(12)
 
         # Determine theme colors for per-widget overrides
         self._theme = os.environ.get('COLLAGE_THEME', 'light')
         self._colors = style_tokens.get_colors(theme=self._theme)
 
         # Controls and collage
-        main_layout.addLayout(self._create_controls())
+        topbar = self._create_controls_bar()
+        main_layout.addWidget(topbar)
         self.collage = CollageWidget(
             rows=self.rows_spin.value(),
             columns=self.cols_spin.value(),
@@ -170,6 +173,95 @@ class MainWindow(QMainWindow):
         layout.addWidget(save_btn)
 
         return layout
+
+    def _create_controls_bar(self) -> QWidget:
+        bar = QWidget()
+        bar_layout = QHBoxLayout(bar)
+        bar_layout.setContentsMargins(12, 12, 12, 12)
+        bar_layout.setSpacing(8)
+
+        # Grid controls
+        self.rows_spin = QSpinBox()
+        self.rows_spin.setRange(1, 10)
+        self.rows_spin.setValue(config.DEFAULT_ROWS)
+        self.cols_spin = QSpinBox()
+        self.cols_spin.setRange(1, 10)
+        self.cols_spin.setValue(config.DEFAULT_COLUMNS)
+        spin_ss = f"""
+        QSpinBox {{
+            background-color: {self._colors.surface};
+            color: {self._colors.text};
+            border: 1px solid {self._colors.border};
+            border-radius: 6px;
+            padding: 4px 22px 4px 8px;
+            min-height: 28px;
+        }}
+        QSpinBox QLineEdit {{
+            background: transparent;
+            color: {self._colors.text};
+            selection-background-color: {self._colors.focus};
+            selection-color: #ffffff;
+        }}
+        QSpinBox:disabled {{ color: {self._colors.text_muted}; }}
+        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{
+            background: {self._colors.surface};
+            border-left: 1px solid {self._colors.border};
+            width: 22px;
+        }}
+        """
+        self.rows_spin.setStyleSheet(spin_ss)
+        self.cols_spin.setStyleSheet(spin_ss)
+        self.rows_spin.setAccessibleName("Rows")
+        self.cols_spin.setAccessibleName("Columns")
+
+        # Left group
+        left = QWidget()
+        left_l = QHBoxLayout(left)
+        left_l.setContentsMargins(0, 0, 0, 0)
+        left_l.setSpacing(8)
+        left_l.addWidget(QLabel("Rows:"))
+        left_l.addWidget(self.rows_spin)
+        left_l.addWidget(QLabel("Cols:"))
+        left_l.addWidget(self.cols_spin)
+        tmpl_label = QLabel("Templates:")
+        tmpl = QComboBox()
+        tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
+        tmpl.setAccessibleName("Templates")
+        tmpl.setToolTip("Choose a grid template")
+        tmpl.currentTextChanged.connect(self._apply_template)
+        left_l.addWidget(tmpl_label)
+        left_l.addWidget(tmpl)
+        update_btn = QPushButton("Update Grid")
+        update_btn.clicked.connect(self._update_grid)
+        update_btn.setAccessibleName("Update Grid")
+        update_btn.setToolTip("Apply rows/cols to rebuild the grid")
+        left_l.addWidget(update_btn)
+
+        # Right group
+        right = QWidget()
+        right_l = QHBoxLayout(right)
+        right_l.setContentsMargins(0, 0, 0, 0)
+        right_l.setSpacing(8)
+        add_btn = QPushButton("Add Images…")
+        add_btn.clicked.connect(self._add_images)
+        add_btn.setToolTip("Add images to empty cells")
+        add_btn.setAccessibleName("Add Images")
+        clear_btn = QPushButton("Clear All")
+        clear_btn.clicked.connect(self._reset_collage)
+        clear_btn.setToolTip("Clear all images and merges")
+        clear_btn.setAccessibleName("Clear All")
+        save_btn = QPushButton("Save Collage")
+        save_btn.clicked.connect(self._show_save_dialog)
+        save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP")
+        save_btn.setAccessibleName("Save Collage")
+        right_l.addWidget(add_btn)
+        right_l.addWidget(clear_btn)
+        right_l.addWidget(save_btn)
+
+        bar_layout.addWidget(left)
+        bar_layout.addStretch(1)
+        bar_layout.addWidget(right)
+        return bar
 
     # --- Caption Panel ---
     def _create_caption_panel(self):
