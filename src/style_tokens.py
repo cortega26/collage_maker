@@ -12,13 +12,13 @@ from typing import Dict
 
 @dataclass(frozen=True)
 class Colors:
-    text: str = "#1f2937"
-    text_muted: str = "#6b7280"
-    background: str = "#f7f8fa"
-    surface: str = "#ffffff"
-    border: str = "#e5e7eb"
-    focus: str = "#1d4ed8"
-    primary: str = "#0a58ca"
+    text: str = "#111827"        # Gray-900
+    text_muted: str = "#6b7280"   # Gray-500
+    background: str = "#f9fafb"   # Gray-50
+    surface: str = "#ffffff"      # White
+    border: str = "#e5e7eb"       # Gray-200
+    focus: str = "#1d4ed8"        # Blue-700
+    primary: str = "#0a58ca"      # Accessible blue
     primary_hover: str = "#094db3"
     primary_pressed: str = "#083a9b"
 
@@ -57,6 +57,9 @@ QWidget {{
 QMainWindow {{
     background-color: {colors.background};
 }}
+
+QLabel {{ color: {colors.text}; }}
+QToolTip {{ color: {colors.text}; background-color: {colors.surface}; border: 1px solid {colors.border}; }}
 
 /* Buttons */
 QPushButton {{
@@ -103,8 +106,27 @@ CollageCell:focus {{ border: 2px solid {colors.focus}; }}
 """
 
 
-def apply_tokens(app, *, colors: Colors = Colors(), typo: Typography = Typography(), radius: Radius = Radius()) -> None:
-    """Append token-generated QSS to the current application style sheet."""
-    qss = build_qss(colors, typo, radius)
-    app.setStyleSheet((app.styleSheet() or "") + "\n" + qss)
+def _dark_colors() -> Colors:
+    return Colors(
+        text="#e5e7eb",
+        text_muted="#9ca3af",
+        background="#0f172a",  # slate-900
+        surface="#111827",
+        border="#334155",
+        focus="#60a5fa",
+        primary="#60a5fa",
+        primary_hover="#3b82f6",
+        primary_pressed="#2563eb",
+    )
 
+
+def apply_tokens(app, *, theme: str = "light", colors: Colors | None = None, typo: Typography = Typography(), radius: Radius = Radius()) -> None:
+    """Append token-generated QSS to the current application style sheet.
+
+    Args:
+        theme: 'light' (default) or 'dark'. Ignored if explicit colors provided.
+        colors: optional Colors override. If None, chosen by theme.
+    """
+    chosen = colors or (_dark_colors() if str(theme).lower() == "dark" else Colors())
+    qss = build_qss(chosen, typo, radius)
+    app.setStyleSheet((app.styleSheet() or "") + "\n" + qss)

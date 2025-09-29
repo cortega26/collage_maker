@@ -376,8 +376,9 @@ if __name__ == '__main__':
     qss = Path(__file__).resolve().parents[1] / 'ui' / 'style.qss'
     if qss.exists():
         app.setStyleSheet(qss.read_text(encoding='utf-8'))
-    # Apply design tokens on top of static QSS
-    style_tokens.apply_tokens(app)
+    # Apply design tokens on top of static QSS (allow env override for theme)
+    theme = os.environ.get('COLLAGE_THEME', 'light')
+    style_tokens.apply_tokens(app, theme=theme)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
