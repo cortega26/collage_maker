@@ -10,7 +10,7 @@ import traceback
 from PySide6.QtCore import QDateTime
 from PySide6.QtWidgets import QMessageBox
 
-import config
+from .. import config
 
 
 class ErrorRecoveryManager:

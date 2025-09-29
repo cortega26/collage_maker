@@ -8,7 +8,7 @@ from typing import Dict
 from PySide6.QtCore import Qt, QSize, QFileInfo
 from PySide6.QtGui import QImage, QImageReader
 
-import config
+from . import config
 
 
 class ImageOptimizer:

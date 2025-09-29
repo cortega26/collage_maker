@@ -13,7 +13,7 @@ try:
 except ImportError:
     HAS_PSUTIL = False
 
-import config
+from .. import config
 from cache import image_cache
 
 
