@@ -62,6 +62,8 @@ def apply_filter(image: Image.Image, filter_type: str) -> Image.Image:
         "edge_enhance": ImageFilter.EDGE_ENHANCE,
         "detail": ImageFilter.DETAIL,
     }
+    if filter_type == "grayscale":
+        return image.convert("L").convert("RGB")
     return image.filter(filters.get(filter_type, ImageFilter.BLUR))
 
 

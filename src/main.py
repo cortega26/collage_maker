@@ -97,6 +97,11 @@ class MainWindow(QMainWindow):
         update_btn.setToolTip("Apply rows/cols to rebuild the grid")
         layout.addWidget(QLabel("Rows:")); layout.addWidget(self.rows_spin)
         layout.addWidget(QLabel("Cols:")); layout.addWidget(self.cols_spin)
+        # Templates: quick presets
+        tmpl = QComboBox(); tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
+        tmpl.setAccessibleName("Templates"); tmpl.setToolTip("Choose a grid template")
+        tmpl.currentTextChanged.connect(self._apply_template)
+        layout.addWidget(QLabel("Templates:")); layout.addWidget(tmpl)
         layout.addWidget(update_btn)
 
         # Save controls
@@ -121,6 +126,15 @@ class MainWindow(QMainWindow):
 
     def _update_grid(self):
         self.collage.update_grid(self.rows_spin.value(), self.cols_spin.value())
+
+    def _apply_template(self, name: str):
+        try:
+            r, c = name.split("x")
+            self.rows_spin.setValue(int(r))
+            self.cols_spin.setValue(int(c))
+            self._update_grid()
+        except Exception:
+            pass
 
     def _reset_collage(self):
         self.collage.clear()

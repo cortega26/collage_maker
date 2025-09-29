@@ -12,12 +12,17 @@ from PySide6.QtCore import (
     Qt, QMimeData, QByteArray, QDataStream, QIODevice, QRect, QSize, QPoint
 )
 from PySide6.QtGui import (
-    QPainter, QPixmap, QImageReader, QColor, QDrag
+    QPainter, QPixmap, QImageReader, QColor, QDrag, QGuiApplication
 )
+from PySide6.QtWidgets import QMenu, QAction
+from PySide6.QtCore import QBuffer, QByteArray
 
 from .. import config
 from ..cache import image_cache
 from ..optimizer import ImageOptimizer
+from utils.image_operations import apply_filter as pil_apply_filter, adjust_brightness as pil_brightness, adjust_contrast as pil_contrast
+from PIL import Image
+from io import BytesIO
 
 
 class ImageMimeData(QMimeData):
@@ -189,6 +194,68 @@ class CollageCell(QWidget):
                 self.mouseDoubleClickEvent(None)
                 event.accept(); return
         super().keyPressEvent(event)
+
+    # --- Context menu: filters and adjustments ---
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        clear_action = QAction("Clear Image", self)
+        clear_action.triggered.connect(self.clearImage)
+        menu.addAction(clear_action)
+        if self.pixmap:
+            filters = menu.addMenu("Filters")
+            for name in ["grayscale", "blur", "sharpen", "smooth", "edge_enhance", "detail"]:
+                act = QAction(name.capitalize().replace('_', ' '), self)
+                act.triggered.connect(lambda _, n=name: self._apply_pil_filter(n))
+                filters.addAction(act)
+            adj = menu.addMenu("Adjustments")
+            brighter = QAction("Brightness +10%", self); brighter.triggered.connect(lambda: self._apply_adjustment('brightness', 1.1))
+            darker = QAction("Brightness -10%", self); darker.triggered.connect(lambda: self._apply_adjustment('brightness', 0.9))
+            morec = QAction("Contrast +10%", self); morec.triggered.connect(lambda: self._apply_adjustment('contrast', 1.1))
+            lessc = QAction("Contrast -10%", self); lessc.triggered.connect(lambda: self._apply_adjustment('contrast', 0.9))
+            for a in (brighter, darker, morec, lessc):
+                adj.addAction(a)
+        menu.exec(event.globalPos())
+
+    def _qimage_to_pil(self) -> Image.Image:
+        img = self.pixmap.toImage()
+        buffer = QBuffer()
+        buffer.open(QBuffer.ReadWrite)
+        img.save(buffer, 'PNG')
+        pil_img = Image.open(BytesIO(buffer.data()))
+        pil_img.load()
+        return pil_img
+
+    def _pil_to_qpixmap(self, pil_img: Image.Image) -> QPixmap:
+        out = BytesIO()
+        pil_img.save(out, format='PNG')
+        ba = QByteArray(out.getvalue())
+        qimg = QImageReader.fromData(ba, b"PNG").read()
+        return QPixmap.fromImage(qimg)
+
+    def _apply_pil_filter(self, name: str) -> None:
+        try:
+            if not self.pixmap:
+                return
+            pil_img = self._qimage_to_pil()
+            result = pil_apply_filter(pil_img, name)
+            self.setImage(self._pil_to_qpixmap(result))
+        except Exception as e:
+            logging.error("Cell %d: filter '%s' failed: %s", self.cell_id, name, e)
+
+    def _apply_adjustment(self, kind: str, factor: float) -> None:
+        try:
+            if not self.pixmap:
+                return
+            pil_img = self._qimage_to_pil()
+            if kind == 'brightness':
+                result = pil_brightness(pil_img, factor)
+            elif kind == 'contrast':
+                result = pil_contrast(pil_img, factor)
+            else:
+                return
+            self.setImage(self._pil_to_qpixmap(result))
+        except Exception as e:
+            logging.error("Cell %d: adjustment '%s' failed: %s", self.cell_id, kind, e)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls() or event.mimeData().hasFormat("application/x-pixmap"):

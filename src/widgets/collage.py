@@ -37,6 +37,8 @@ class CollageWidget(QWidget):
         # Allow widget to expand and recompute cell sizes on resize
         from PySide6.QtWidgets import QSizePolicy
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # Accept external drops to auto-fill empty cells
+        self.setAcceptDrops(True)
 
     def _setup_layout(self) -> None:
         self.grid_layout = QGridLayout(self)
@@ -243,6 +245,31 @@ class CollageWidget(QWidget):
         if set(positions) != required:
             return None
         return r0, c0, (r1 - r0 + 1), (c1 - c0 + 1)
+
+    # --- Drag & drop to fill grid ---
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        urls = event.mimeData().urls()
+        if not urls:
+            return
+        paths = [u.toLocalFile() for u in urls if u.isLocalFile()]
+        self._fill_empty_cells(paths)
+        event.acceptProposedAction()
+
+    def _fill_empty_cells(self, paths: List[str]) -> None:
+        empties = [c for c in self.cells if not getattr(c, 'pixmap', None)]
+        if not empties:
+            return
+        for pth, cell in zip(paths, empties):
+            try:
+                cell._load_image(pth)  # reuse existing loader with validation and optimization
+            except Exception:
+                continue
 
     def clear(self) -> None:
         """Reset entire grid to initial empty state."""
