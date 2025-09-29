@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
     QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
-    QFrame, QPlainTextEdit, QFontComboBox, QColorDialog
+    QFrame
 )
 from PySide6.QtCore import Qt, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage, QImageReader
@@ -73,6 +73,9 @@ class MainWindow(QMainWindow):
         # Controls and collage
         topbar = self._create_controls_bar()
         main_layout.addWidget(topbar)
+        # Separator under the toolbar
+        sep = QFrame(); sep.setFrameShape(QFrame.HLine); sep.setFrameShadow(QFrame.Sunken)
+        main_layout.addWidget(sep)
         self.collage = CollageWidget(
             rows=self.rows_spin.value(),
             columns=self.cols_spin.value(),
@@ -101,16 +104,15 @@ class MainWindow(QMainWindow):
 
         logging.info("MainWindow initialized.")
 
-    def _create_controls(self):
-        layout = QHBoxLayout()
+    def _create_controls_bar(self) -> QWidget:
+        bar = QWidget()
+        bar_layout = QHBoxLayout(bar)
+        bar_layout.setContentsMargins(12, 12, 12, 12)
+        bar_layout.setSpacing(8)
+
         # Grid controls
-        self.rows_spin = QSpinBox()
-        self.rows_spin.setRange(1, 10)
-        self.rows_spin.setValue(config.DEFAULT_ROWS)
-        self.cols_spin = QSpinBox()
-        self.cols_spin.setRange(1, 10)
-        self.cols_spin.setValue(config.DEFAULT_COLUMNS)
-        # Force high-contrast text/background for spin boxes regardless of platform theme quirks
+        self.rows_spin = QSpinBox(); self.rows_spin.setRange(1,10); self.rows_spin.setValue(config.DEFAULT_ROWS)
+        self.cols_spin = QSpinBox(); self.cols_spin.setRange(1,10); self.cols_spin.setValue(config.DEFAULT_COLUMNS)
         spin_ss = f"""
         QSpinBox {{
             background-color: {self._colors.surface};
@@ -137,42 +139,33 @@ class MainWindow(QMainWindow):
         self.cols_spin.setStyleSheet(spin_ss)
         self.rows_spin.setAccessibleName("Rows")
         self.cols_spin.setAccessibleName("Columns")
-        update_btn = QPushButton("Update Grid")
-        update_btn.clicked.connect(self._update_grid)
-        update_btn.setAccessibleName("Update Grid")
-        update_btn.setToolTip("Apply rows/cols to rebuild the grid")
-        layout.addWidget(QLabel("Rows:"))
-        layout.addWidget(self.rows_spin)
-        layout.addWidget(QLabel("Cols:"))
-        layout.addWidget(self.cols_spin)
-        # Templates: quick presets
-        tmpl = QComboBox()
-        tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
-        tmpl.setAccessibleName("Templates")
-        tmpl.setToolTip("Choose a grid template")
+
+        # Left group
+        left = QWidget(); left_l = QHBoxLayout(left)
+        left_l.setContentsMargins(0,0,0,0); left_l.setSpacing(8)
+        left_l.addWidget(QLabel("Rows:")); left_l.addWidget(self.rows_spin)
+        left_l.addWidget(QLabel("Cols:")); left_l.addWidget(self.cols_spin)
+        tmpl_label = QLabel("Templates:")
+        tmpl = QComboBox(); tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"]) 
+        tmpl.setAccessibleName("Templates"); tmpl.setToolTip("Choose a grid template")
         tmpl.currentTextChanged.connect(self._apply_template)
-        layout.addWidget(QLabel("Templates:"))
-        layout.addWidget(tmpl)
-        layout.addWidget(update_btn)
+        left_l.addWidget(tmpl_label); left_l.addWidget(tmpl)
+        update_btn = QPushButton("Update Grid"); update_btn.clicked.connect(self._update_grid); update_btn.setAccessibleName("Update Grid")
+        update_btn.setToolTip("Apply rows/cols to rebuild the grid")
+        left_l.addWidget(update_btn)
 
-        # Save controls
-        add_btn = QPushButton("Add Images…")
-        add_btn.clicked.connect(self._add_images)
-        add_btn.setToolTip("Add images to empty cells")
-        add_btn.setAccessibleName("Add Images")
-        layout.addWidget(add_btn)
-        clear_btn = QPushButton("Clear All")
-        clear_btn.clicked.connect(self._reset_collage)
-        clear_btn.setToolTip("Clear all images and merges")
-        clear_btn.setAccessibleName("Clear All")
-        layout.addWidget(clear_btn)
-        save_btn = QPushButton("Save Collage")
-        save_btn.clicked.connect(self._show_save_dialog)
-        save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP")
-        save_btn.setAccessibleName("Save Collage")
-        layout.addWidget(save_btn)
+        # Right group
+        right = QWidget(); right_l = QHBoxLayout(right)
+        right_l.setContentsMargins(0,0,0,0); right_l.setSpacing(8)
+        add_btn = QPushButton("Add Images…"); add_btn.clicked.connect(self._add_images); add_btn.setToolTip("Add images to empty cells"); add_btn.setAccessibleName("Add Images")
+        clear_btn = QPushButton("Clear All"); clear_btn.clicked.connect(self._reset_collage); clear_btn.setToolTip("Clear all images and merges"); clear_btn.setAccessibleName("Clear All")
+        save_btn = QPushButton("Save Collage"); save_btn.clicked.connect(self._show_save_dialog); save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP"); save_btn.setAccessibleName("Save Collage")
+        right_l.addWidget(add_btn); right_l.addWidget(clear_btn); right_l.addWidget(save_btn)
 
-        return layout
+        bar_layout.addWidget(left)
+        bar_layout.addStretch(1)
+        bar_layout.addWidget(right)
+        return bar
 
     def _create_controls_bar(self) -> QWidget:
         bar = QWidget()
