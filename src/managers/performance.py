@@ -14,7 +14,7 @@ except ImportError:
     HAS_PSUTIL = False
 
 from .. import config
-from cache import image_cache
+from ..cache import image_cache
 
 
 class PerformanceMonitor:
