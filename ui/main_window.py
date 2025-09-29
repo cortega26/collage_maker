@@ -33,6 +33,8 @@ class MainWindow(QMainWindow):
     def _setup_controls(self) -> None:
         """Set up the control buttons and layout selector."""
         controls_layout = QHBoxLayout()
+        controls_layout.setContentsMargins(12, 12, 12, 12)
+        controls_layout.setSpacing(8)
         
         # Layout selector
         self.layout_combo = QComboBox()
@@ -68,12 +70,16 @@ class MainWindow(QMainWindow):
         controls_layout.addWidget(self.save_button)
         
         # Add controls to main layout
+        self.main_layout.setContentsMargins(16, 16, 16, 16)
+        self.main_layout.setSpacing(12)
         self.main_layout.addLayout(controls_layout)
         
     def _setup_collage_canvas(self) -> None:
         """Set up the collage canvas."""
         try:
             self.collage_canvas = CollageCanvas()
+            # Comfortable default spacing
+            self.collage_canvas.setSpacing(8)
             self.collage_canvas.collageUpdated.connect(self._update_save_button)
             self.main_layout.addWidget(self.collage_canvas)
         except Exception as e:

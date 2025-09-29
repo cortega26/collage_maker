@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt, QSize, QPoint
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
 
 import config
+from pathlib import Path
 from widgets.collage import CollageWidget
 from managers.autosave import AutosaveManager
 from managers.performance import PerformanceMonitor
@@ -251,6 +252,9 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    qss = Path('ui/style.qss')
+    if qss.exists():
+        app.setStyleSheet(qss.read_text(encoding='utf-8'))
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

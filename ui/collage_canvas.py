@@ -23,7 +23,7 @@ class CollageCanvas(QWidget):
     layoutChanged = Signal(str)  # New signal for layout changes
     
     # Class constants
-    SPACING = 2  # Spacing between images in pixels
+    SPACING = 8  # Spacing between images in pixels
     MAX_IMAGE_SIZE = 10000  # Maximum allowed image dimension
     MIN_IMAGE_SIZE = 50  # Minimum allowed image dimension
     AUTO_SAVE_INTERVAL = 300000  # 5 minutes in milliseconds
@@ -36,7 +36,7 @@ class CollageCanvas(QWidget):
         
     def _init_ui(self) -> None:
         """Initialize the UI components."""
-        # Create grid layout for images
+        # Create grid layout placeholder (not used for placement any more)
         self.grid_layout = QGridLayout(self)
         self.grid_layout.setSpacing(self.SPACING)
         self.grid_layout.setContentsMargins(10, 10, 10, 10)
@@ -131,27 +131,21 @@ class CollageCanvas(QWidget):
             raise ValueError(f"Failed to setup layout: {e}")
 
     def _create_image_labels(self) -> None:
-        """Create and set up image labels for the current layout."""
-        # Calculate dimensions
+        """Create labels and position them explicitly using geometry."""
         canvas_size = self.size()
         cell_dimensions = self._calculate_cell_dimensions(canvas_size)
-        
-        # Create and add labels
-        for dimensions in cell_dimensions:
-            x = int(dimensions['x'])
-            y = int(dimensions['y'])
-            w = int(dimensions['width'])
-            h = int(dimensions['height'])
-            
-            # Create and configure label
+        for d in cell_dimensions:
+            x = int(d['x']); y = int(d['y']); w = int(d['width']); h = int(d['height'])
             label = self._create_image_label(QSize(w, h))
-            label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            self.grid_layout.addWidget(label, y, x)
+            label.setParent(self)
+            label.setGeometry(x, y, w, h)
             self.image_labels.append(label)
-            
-        # Configure grid layout
-        self.grid_layout.setSpacing(self.SPACING)
-        self.grid_layout.setAlignment(Qt.AlignCenter)
+        self.update()
+
+    def _layout_labels(self) -> None:
+        dims = self._calculate_cell_dimensions(self.size())
+        for label, d in zip(self.image_labels, dims):
+            label.setGeometry(int(d['x']), int(d['y']), int(d['width']), int(d['height']))
 
     def _calculate_cell_dimensions(self, canvas_size: QSize) -> List[Dict[str, int]]:
         """
@@ -420,5 +414,5 @@ class CollageCanvas(QWidget):
     def resizeEvent(self, event) -> None:
         """Handle resize events for the collage canvas."""
         super().resizeEvent(event)
-        if self.current_layout:
-            self.setLayout(self.current_layout.name)
+        if self.current_layout and self.image_labels:
+            self._layout_labels()

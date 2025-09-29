@@ -34,7 +34,9 @@ class CollageWidget(QWidget):
         self._setup_layout()
         self.cells: List[CollageCell] = []
         self.populate_grid()
-        self.setFixedSize(self.sizeHint())
+        # Allow widget to expand and recompute cell sizes on resize
+        from PySide6.QtWidgets import QSizePolicy
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
     def _setup_layout(self) -> None:
         self.grid_layout = QGridLayout(self)
@@ -201,7 +203,20 @@ class CollageWidget(QWidget):
         for (r, c), (rs, cs) in old_merges.items():
             if r + rs <= rows and c + cs <= columns:
                 self.merge_cells(r, c, rs, cs)
-        self.setFixedSize(self.sizeHint())
+        self.update()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Compute square cell size to fit current widget size with spacing
+        if self.columns <= 0 or self.rows <= 0:
+            return
+        total_w = max(0, self.width() - (self.columns - 1) * self.spacing)
+        total_h = max(0, self.height() - (self.rows - 1) * self.spacing)
+        cell_w = total_w // self.columns
+        cell_h = total_h // self.rows
+        size = max(1, min(cell_w, cell_h))
+        for cell in self.cells:
+            cell.setFixedSize(size, size)
 
     def merge_selected(self) -> bool:
         """Convenience: merge all currently selected into a rectangle."""

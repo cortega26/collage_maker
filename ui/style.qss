@@ -1,72 +1,60 @@
+/* Base */
+QWidget {
+    font-family: "Segoe UI", "Inter", system-ui;
+    font-size: 10pt;
+    color: #1f2937;
+}
+
 /* Main Window */
 QMainWindow {
-    background-color: #f5f5f5;
+    background-color: #f7f8fa;
 }
 
 /* Buttons */
 QPushButton {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    padding: 5px 15px;
-    min-width: 80px;
+    background-color: #0d6efd;
+    color: #ffffff;
+    border: 1px solid #0d6efd;
+    border-radius: 6px;
+    padding: 6px 14px;
+    min-height: 28px;
 }
-
-QPushButton:hover {
-    background-color: #0056b3;
-}
-
-QPushButton:disabled {
-    background-color: #cccccc;
-}
+QPushButton:hover { background-color: #0b5ed7; border-color: #0b5ed7; }
+QPushButton:pressed { background-color: #0a58ca; border-color: #0a58ca; }
+QPushButton:disabled { background-color: #e5e7eb; border-color: #e5e7eb; color: #9ca3af; }
+QPushButton:focus { outline: none; border: 1px solid #80bdff; }
 
 /* ComboBox */
 QComboBox {
-    border: 1px solid #cccccc;
-    border-radius: 3px;
-    padding: 5px;
-    min-width: 100px;
-    background-color: white;
+    background-color: #ffffff;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-width: 140px;
 }
-
-QComboBox::drop-down {
-    border: none;
-    width: 20px;
-}
-
-QComboBox::down-arrow {
-    image: url(down_arrow.png);
-    width: 12px;
-    height: 12px;
-}
-
+QComboBox::drop-down { width: 22px; border-left: 1px solid #e5e7eb; }
 QComboBox QAbstractItemView {
-    border: 1px solid #cccccc;
-    selection-background-color: #007bff;
-    selection-color: white;
+    border: 1px solid #d1d5db;
+    selection-background-color: #0d6efd;
+    selection-color: #ffffff;
 }
 
 /* Image Labels */
 ImageLabel {
-    border: 2px dashed #cccccc;
-    border-radius: 5px;
-    background-color: white;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: #6b7280;
 }
-
-ImageLabel:hover {
-    border-color: #007bff;
-}
-
-/* Layout */
-QVBoxLayout, QHBoxLayout {
-    spacing: 10px;
-    margin: 10px;
-}
+ImageLabel:hover { border-color: #0d6efd; }
+ImageLabel[hasImage="true"] { border: 1px solid #e5e7eb; border-radius: 6px; }
 
 /* Collage Canvas */
 CollageCanvas {
-    background-color: white;
-    border: 1px solid #cccccc;
-    border-radius: 5px;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
 }
+
+/* Note: Layout spacing must be set in code; QSS cannot style layouts */

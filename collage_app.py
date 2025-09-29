@@ -1,5 +1,6 @@
 import sys
 import logging
+from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -384,6 +385,9 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    qss = Path('ui/style.qss')
+    if qss.exists():
+        app.setStyleSheet(qss.read_text(encoding='utf-8'))
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

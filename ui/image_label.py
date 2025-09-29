@@ -65,6 +65,8 @@ class ImageLabel(QLabel):
             if not pixmap.isNull():
                 self.original_pixmap = pixmap
                 self._update_pixmap()
+                self.setProperty('hasImage', True)
+                self.style().unpolish(self); self.style().polish(self)
                 self.imageDropped.emit()
             else:
                 raise ValueError("Invalid image file")
@@ -81,6 +83,8 @@ class ImageLabel(QLabel):
         """
         self.original_pixmap = pixmap
         self._update_pixmap()
+        self.setProperty('hasImage', True)
+        self.style().unpolish(self); self.style().polish(self)
 
     def _update_pixmap(self):
         """Update the displayed pixmap, scaling it to fit the label while maintaining aspect ratio."""
@@ -116,6 +120,8 @@ class ImageLabel(QLabel):
         self.original_pixmap = None
         self.setText("Drag an image here")
         self.setContentsMargins(0, 0, 0, 0)
+        self.setProperty('hasImage', False)
+        self.style().unpolish(self); self.style().polish(self)
 
     def paintEvent(self, event):
         """Custom paint event to draw the image and placeholder text."""
