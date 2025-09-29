@@ -8,8 +8,8 @@ import logging
 from PySide6.QtWidgets import QWidget, QGridLayout
 from PySide6.QtCore import QSize
 
-import config
-from widgets.cell import CollageCell
+from .. import config
+from .cell import CollageCell
 
 
 class CollageWidget(QWidget):

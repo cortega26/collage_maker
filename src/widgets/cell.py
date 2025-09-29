@@ -15,9 +15,9 @@ from PySide6.QtGui import (
     QPainter, QPixmap, QImageReader, QColor, QDrag
 )
 
-import config
-from cache import image_cache
-from optimizer import ImageOptimizer
+from .. import config
+from ..cache import image_cache
+from ..optimizer import ImageOptimizer
 
 
 class ImageMimeData(QMimeData):
