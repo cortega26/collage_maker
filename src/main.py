@@ -296,6 +296,10 @@ class MainWindow(QMainWindow):
         total_w = sum(col_widths)
         total_h = sum(row_heights)
 
+        if total_w <= 0 or total_h <= 0:
+            QMessageBox.information(self, "No Original Images", "There are no original images to export.")
+            return
+
         canvas = QPixmap(total_w, total_h); canvas.fill(Qt.transparent)
         painter = QPainter(canvas)
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
@@ -313,7 +317,8 @@ class MainWindow(QMainWindow):
 
         if fmt in ['jpeg','jpg']:
             canvas = self._convert_for_jpeg(canvas)
-        canvas.save(path, fmt, quality)
+        if not canvas.save(path, fmt, quality):
+            raise IOError(f"Failed to save original collage to {path}")
         logging.info("Saved original collage to %s", path)
 
     def get_collage_state(self):

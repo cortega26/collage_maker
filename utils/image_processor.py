@@ -231,8 +231,10 @@ class ImageProcessor:
         """
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         results: Dict[str, bool] = {}
+        if not image_paths:
+            return results
         futures = []
 
         for path in image_paths:

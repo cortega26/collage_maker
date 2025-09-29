@@ -236,11 +236,12 @@ class CollageCell(QWidget):
             reader = QImageReader(file_path)
             reader.setAutoTransform(True)
             size = reader.size()
-            fmt = reader.format().data().decode('utf-8')
+            raw_fmt = reader.format().data() if reader.format() else None
+            fmt = raw_fmt.decode('utf-8') if raw_fmt else ''
 
             # Unsupported formats
             if fmt.lower() not in config.SUPPORTED_IMAGE_FORMATS:
-                raise IOError(f"Unsupported format: {fmt}")
+                raise IOError(f"Unsupported image format: '{fmt or 'unknown'}'")
 
             # Large image scaling
             max_dim = max(size.width(), size.height())
@@ -251,8 +252,9 @@ class CollageCell(QWidget):
                 )
 
             img = reader.read()
-            if img.isNull():
-                raise IOError(f"Failed to read image: {reader.errorString()}")
+            if img.isNull() or img.width() <= 0 or img.height() <= 0:
+                err = reader.errorString() or "Invalid or empty image data"
+                raise IOError(f"Failed to read image: {err}")
 
             # Optimize for display
             optimized = ImageOptimizer.optimize_image(img, self.size())
@@ -263,6 +265,8 @@ class CollageCell(QWidget):
             full_meta = ImageOptimizer.process_metadata(file_path)
             image_cache.put(file_path, pix, full_meta)
 
+        except FileNotFoundError as e:
+            logging.error("Cell %d: file not found: %s", self.cell_id, file_path)
         except Exception as e:
             logging.error("Cell %d: load error: %s", self.cell_id, e)
 
