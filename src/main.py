@@ -14,12 +14,23 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage
 
-from . import config
 from pathlib import Path
-from .widgets.collage import CollageWidget
-from .managers.autosave import AutosaveManager
-from .managers.performance import PerformanceMonitor
-from .managers.recovery import ErrorRecoveryManager
+try:
+    # Preferred package-relative imports
+    from . import config
+    from .widgets.collage import CollageWidget
+    from .managers.autosave import AutosaveManager
+    from .managers.performance import PerformanceMonitor
+    from .managers.recovery import ErrorRecoveryManager
+except ImportError:
+    # Fallback for running `python src/main.py` directly
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from src import config
+    from src.widgets.collage import CollageWidget
+    from src.managers.autosave import AutosaveManager
+    from src.managers.performance import PerformanceMonitor
+    from src.managers.recovery import ErrorRecoveryManager
 
 # Configure logging
 logging.basicConfig(
@@ -263,7 +274,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    qss = Path('ui/style.qss')
+    qss = Path(__file__).resolve().parents[1] / 'ui' / 'style.qss'
     if qss.exists():
         app.setStyleSheet(qss.read_text(encoding='utf-8'))
     window = MainWindow()
