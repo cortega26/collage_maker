@@ -96,10 +96,10 @@ class CollageCell(QWidget):
 
         logging.info("Cell %d created; size %dx%d", cell_id, cell_size, cell_size)
 
-    def setImage(self, pixmap: QPixmap) -> None:
-        """Set both display and original pixmap."""
-        self.original_pixmap = pixmap
+    def setImage(self, pixmap: QPixmap, *, original: Optional[QPixmap] = None) -> None:
+        """Set the display pixmap while preserving an optional original."""
         self.pixmap = pixmap
+        self.original_pixmap = original or pixmap
         self.update()
         logging.info("Cell %d: image set.", self.cell_id)
 
@@ -402,7 +402,8 @@ class CollageCell(QWidget):
                 return
             pil_img = self._qimage_to_pil()
             result = pil_apply_filter(pil_img, name)
-            self.setImage(self._pil_to_qpixmap(result))
+            new_pix = self._pil_to_qpixmap(result)
+            self.setImage(new_pix, original=new_pix)
         except Exception as e:
             logging.error("Cell %d: filter '%s' failed: %s", self.cell_id, name, e)
 
@@ -417,7 +418,8 @@ class CollageCell(QWidget):
                 result = pil_contrast(pil_img, factor)
             else:
                 return
-            self.setImage(self._pil_to_qpixmap(result))
+            new_pix = self._pil_to_qpixmap(result)
+            self.setImage(new_pix, original=new_pix)
         except Exception as e:
             logging.error("Cell %d: adjustment '%s' failed: %s", self.cell_id, kind, e)
 
@@ -459,9 +461,14 @@ class CollageCell(QWidget):
         """Load, optimize, cache, and display image."""
         try:
             # Cache check
-            cached, meta = image_cache.get(file_path)
+            cache_key = self._cache_key(file_path)
+            cached, meta = image_cache.get(cache_key)
             if cached:
-                self.setImage(cached)
+                if isinstance(cached, tuple) and len(cached) == 2:
+                    display_pix, original_pix = cached
+                else:
+                    display_pix, original_pix = cached, None
+                self.setImage(display_pix, original=original_pix)
                 return
 
             reader = QImageReader(file_path)
@@ -488,29 +495,35 @@ class CollageCell(QWidget):
                 raise IOError(f"Failed to read image: {err}")
 
             # Optimize for display
+            original_pix = QPixmap.fromImage(img)
             optimized = ImageOptimizer.optimize_image(img, self.size())
-            pix = QPixmap.fromImage(optimized)
-            self.setImage(pix)
+            display_pix = QPixmap.fromImage(optimized)
+            self.setImage(display_pix, original=original_pix)
 
             # Cache full-quality
             full_meta = ImageOptimizer.process_metadata(file_path)
-            image_cache.put(file_path, pix, full_meta)
+            image_cache.put(cache_key, (display_pix, original_pix), full_meta)
 
         except FileNotFoundError as e:
             logging.error("Cell %d: file not found: %s", self.cell_id, file_path)
         except Exception as e:
             logging.error("Cell %d: load error: %s", self.cell_id, e)
 
+    def _cache_key(self, file_path: str) -> str:
+        size = self.size()
+        return f"{file_path}::{size.width()}x{size.height()}"
+
     def optimize_memory(self) -> None:
         """Release cached heavy data when under memory pressure."""
-        if self.pixmap and self.original_pixmap:
-            disp = self.size()
-            orig_size = self.original_pixmap.size()
-            if (orig_size.width() > disp.width()*2 or orig_size.height() > disp.height()*2):
-                optimized = self.original_pixmap.scaled(
-                    disp * 2,
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation
-                )
-                self.original_pixmap = optimized
-                gc.collect()
+        if not self.pixmap:
+            return
+        disp = self.size()
+        pix_size = self.pixmap.size()
+        if (pix_size.width() > disp.width()*2 or pix_size.height() > disp.height()*2):
+            self.pixmap = self.pixmap.scaled(
+                disp * 2,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            self.update()
+            gc.collect()

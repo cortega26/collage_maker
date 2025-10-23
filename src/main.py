@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
     QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
-    QFrame, QSizePolicy
+    QFrame, QSizePolicy, QPlainTextEdit, QFontComboBox, QColorDialog
 )
 from PySide6.QtCore import Qt, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage, QImageReader
@@ -24,6 +24,7 @@ try:
     from .managers.autosave import AutosaveManager
     from .managers.performance import PerformanceMonitor
     from .managers.recovery import ErrorRecoveryManager
+    from .optimizer import ImageOptimizer
 except ImportError:
     # Fallback for running `python src/main.py` directly
     import sys as _sys
@@ -33,6 +34,7 @@ except ImportError:
     from src.managers.autosave import AutosaveManager
     from src.managers.performance import PerformanceMonitor
     from src.managers.recovery import ErrorRecoveryManager
+    from src.optimizer import ImageOptimizer
 
 # Configure logging
 logging.basicConfig(
@@ -75,8 +77,14 @@ class MainWindow(QMainWindow):
         topbar = self._create_controls_bar()
         main_layout.addWidget(topbar)
         # Separator under the toolbar (thin)
-        sep = QFrame(); sep.setFrameShape(QFrame.HLine); sep.setFrameShadow(QFrame.Sunken); sep.setFixedHeight(1)
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShadow(QFrame.Sunken)
+        sep.setFixedHeight(1)
         main_layout.addWidget(sep)
+        # Caption tools
+        self.caption_panel = self._create_caption_panel()
+        main_layout.addWidget(self.caption_panel)
         self.collage = CollageWidget(
             rows=self.rows_spin.value(),
             columns=self.cols_spin.value(),
@@ -118,8 +126,12 @@ class MainWindow(QMainWindow):
         bar.setMaximumHeight(30)
 
         # Grid controls
-        self.rows_spin = QSpinBox(); self.rows_spin.setRange(1,10); self.rows_spin.setValue(config.DEFAULT_ROWS)
-        self.cols_spin = QSpinBox(); self.cols_spin.setRange(1,10); self.cols_spin.setValue(config.DEFAULT_COLUMNS)
+        self.rows_spin = QSpinBox()
+        self.rows_spin.setRange(1, 10)
+        self.rows_spin.setValue(config.DEFAULT_ROWS)
+        self.cols_spin = QSpinBox()
+        self.cols_spin.setRange(1, 10)
+        self.cols_spin.setValue(config.DEFAULT_COLUMNS)
         spin_ss = f"""
         QSpinBox {{
             background-color: {self._colors.surface};
@@ -150,36 +162,59 @@ class MainWindow(QMainWindow):
         self.cols_spin.setAccessibleName("Columns")
 
         # Left group
-        left = QWidget(); left_l = QHBoxLayout(left)
+        left = QWidget()
+        left_l = QHBoxLayout(left)
         left.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        left_l.setContentsMargins(0,0,0,0); left_l.setSpacing(4)
-        rows_label = QLabel("Rows:"); cols_label = QLabel("Cols:")
+        left_l.setContentsMargins(0, 0, 0, 0)
+        left_l.setSpacing(4)
+        rows_label = QLabel("Rows:")
+        cols_label = QLabel("Cols:")
         # Fix vertical size of label + spinboxes for a thin toolbar
         for w in (rows_label, cols_label, self.rows_spin, self.cols_spin):
             if hasattr(w, 'setFixedHeight'):
                 w.setFixedHeight(22)
             if hasattr(w, 'setSizePolicy'):
                 w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        left_l.addWidget(rows_label); left_l.addWidget(self.rows_spin)
-        left_l.addWidget(cols_label); left_l.addWidget(self.cols_spin)
+        left_l.addWidget(rows_label)
+        left_l.addWidget(self.rows_spin)
+        left_l.addWidget(cols_label)
+        left_l.addWidget(self.cols_spin)
         tmpl_label = QLabel("Templates:")
-        tmpl = QComboBox(); tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"]) 
-        tmpl.setAccessibleName("Templates"); tmpl.setToolTip("Choose a grid template")
+        tmpl = QComboBox()
+        tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
+        tmpl.setAccessibleName("Templates")
+        tmpl.setToolTip("Choose a grid template")
         tmpl.currentTextChanged.connect(self._apply_template)
-        tmpl.setFixedHeight(22); tmpl.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        left_l.addWidget(tmpl_label); left_l.addWidget(tmpl)
-        update_btn = QPushButton("Update Grid"); update_btn.clicked.connect(self._update_grid); update_btn.setAccessibleName("Update Grid")
+        tmpl.setFixedHeight(22)
+        tmpl.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        left_l.addWidget(tmpl_label)
+        left_l.addWidget(tmpl)
+        update_btn = QPushButton("Update Grid")
+        update_btn.clicked.connect(self._update_grid)
+        update_btn.setAccessibleName("Update Grid")
         update_btn.setToolTip("Apply rows/cols to rebuild the grid")
-        update_btn.setFixedHeight(22); update_btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        update_btn.setFixedHeight(22)
+        update_btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         left_l.addWidget(update_btn)
 
         # Right group
-        right = QWidget(); right_l = QHBoxLayout(right)
+        right = QWidget()
+        right_l = QHBoxLayout(right)
         right.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        right_l.setContentsMargins(0,0,0,0); right_l.setSpacing(4)
-        add_btn = QPushButton("Add Images…"); add_btn.clicked.connect(self._add_images); add_btn.setToolTip("Add images to empty cells"); add_btn.setAccessibleName("Add Images")
-        clear_btn = QPushButton("Clear All"); clear_btn.clicked.connect(self._reset_collage); clear_btn.setToolTip("Clear all images and merges"); clear_btn.setAccessibleName("Clear All")
-        save_btn = QPushButton("Save Collage"); save_btn.clicked.connect(self._show_save_dialog); save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP"); save_btn.setAccessibleName("Save Collage")
+        right_l.setContentsMargins(0, 0, 0, 0)
+        right_l.setSpacing(4)
+        add_btn = QPushButton("Add Images…")
+        add_btn.clicked.connect(self._add_images)
+        add_btn.setToolTip("Add images to empty cells")
+        add_btn.setAccessibleName("Add Images")
+        clear_btn = QPushButton("Clear All")
+        clear_btn.clicked.connect(self._reset_collage)
+        clear_btn.setToolTip("Clear all images and merges")
+        clear_btn.setAccessibleName("Clear All")
+        save_btn = QPushButton("Save Collage")
+        save_btn.clicked.connect(self._show_save_dialog)
+        save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP")
+        save_btn.setAccessibleName("Save Collage")
         for b in (add_btn, clear_btn, save_btn):
             b.setFixedHeight(22)
             b.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -190,10 +225,13 @@ class MainWindow(QMainWindow):
         bar_layout.addWidget(right)
         return bar
 
-
     # --- Caption Panel ---
+
     def _create_caption_panel(self):
-        layout = QHBoxLayout()
+        panel = QWidget()
+        layout = QHBoxLayout(panel)
+        layout.setContentsMargins(4, 0, 4, 0)
+        layout.setSpacing(6)
         # Text inputs
         self.top_edit = QPlainTextEdit()
         self.top_edit.setPlaceholderText("Top Caption")
@@ -274,7 +312,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+Return"), self,
                   activated=self._apply_captions_now)
 
-        return layout
+        return panel
 
     def _pick_color(self, which: str):
         col = QColorDialog.getColor(parent=self)
@@ -510,9 +548,10 @@ class MainWindow(QMainWindow):
                     logging.warning("Skipping invalid image: %s", path)
                     continue
                 # Optimize for current cell size
-                from .optimizer import ImageOptimizer
                 optimized = ImageOptimizer.optimize_image(img, cell.size())
-                cell.setImage(QPixmap.fromImage(optimized))
+                display_pix = QPixmap.fromImage(optimized)
+                original_pix = QPixmap.fromImage(img)
+                cell.setImage(display_pix, original=original_pix)
                 assigned += 1
             except Exception as e:
                 logging.warning("Failed to add image %s: %s", path, e)
@@ -594,5 +633,3 @@ if __name__ == '__main__':
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
-
-

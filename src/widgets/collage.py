@@ -16,6 +16,30 @@ class CollageWidget(QWidget):
     """
     Widget that manages a grid of CollageCell instances, supports merging and splitting.
     """
+
+    _CELL_STATE_ATTRS = (
+        "caption",
+        "top_caption",
+        "bottom_caption",
+        "show_top_caption",
+        "show_bottom_caption",
+        "caption_font_family",
+        "caption_min_size",
+        "caption_max_size",
+        "caption_uppercase",
+        "caption_stroke_width",
+        "caption_stroke_color",
+        "caption_fill_color",
+        "caption_safe_margin_ratio",
+        "use_caption_formatting",
+        "caption_font_size",
+        "caption_bold",
+        "caption_italic",
+        "caption_underline",
+        "transformation_mode",
+        "aspect_ratio_mode",
+    )
+
     def __init__(
         self,
         rows: int = config.DEFAULT_ROWS,
@@ -44,6 +68,35 @@ class CollageWidget(QWidget):
         self.grid_layout = QGridLayout(self)
         self.grid_layout.setSpacing(self.spacing)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
+
+    def _snapshot_cells(self) -> Dict[Tuple[int, int], Dict[str, object]]:
+        """Return a mapping of cell position to serialized state."""
+        state: Dict[Tuple[int, int], Dict[str, object]] = {}
+        for cell, pos in self._cell_pos_map.items():
+            state[pos] = self._serialize_cell(cell)
+        return state
+
+    def _serialize_cell(self, cell: CollageCell) -> Dict[str, object]:
+        """Capture the state of a single cell for restoration."""
+        data = {attr: getattr(cell, attr) for attr in self._CELL_STATE_ATTRS}
+        data["pixmap"] = cell.pixmap
+        data["original_pixmap"] = cell.original_pixmap
+        data["selected"] = getattr(cell, "selected", False)
+        return data
+
+    def _restore_cell(self, cell: CollageCell, state: Dict[str, object]) -> None:
+        """Restore a cell's state from serialized data."""
+        pix = state.get("pixmap")
+        orig = state.get("original_pixmap")
+        if pix:
+            cell.setImage(pix, original=orig or pix)
+        else:
+            cell.clearImage()
+        for attr in self._CELL_STATE_ATTRS:
+            if attr in state:
+                setattr(cell, attr, state[attr])
+        cell.selected = state.get("selected", False)
+        cell.update()
 
     def sizeHint(self) -> QSize:
         width = self.columns * self.cell_size + (self.columns - 1) * self.spacing
@@ -185,7 +238,7 @@ class CollageWidget(QWidget):
                 cell = CollageCell(cell_id, self.cell_size, self)
                 if r == row and c == col:
                     if pix:
-                        cell.setImage(pix)
+                        cell.setImage(pix, original=pix)
                     cell.caption = caption
                     cell.selected = selected
                     cell.update()
@@ -197,7 +250,8 @@ class CollageWidget(QWidget):
         return True
 
     def update_grid(self, rows: int, columns: int) -> None:
-        """Resize grid, reapply valid merges."""
+        """Resize grid, reapply valid merges, and restore cell content."""
+        preserved = self._snapshot_cells()
         self.rows, self.columns = rows, columns
         old_merges = self.merged_cells.copy()
         self.merged_cells.clear()
@@ -205,6 +259,13 @@ class CollageWidget(QWidget):
         for (r, c), (rs, cs) in old_merges.items():
             if r + rs <= rows and c + cs <= columns:
                 self.merge_cells(r, c, rs, cs)
+        for (r, c), data in preserved.items():
+            if r >= self.rows or c >= self.columns:
+                continue
+            cell = self.get_cell_at(r, c)
+            if not cell:
+                continue
+            self._restore_cell(cell, data)
         self.update()
 
     def resizeEvent(self, event):
