@@ -152,6 +152,15 @@ CollageCell {{
     background-color: {colors.surface};
 }}
 CollageCell:focus {{ border: 2px solid {colors.focus}; }}
+
+/* Compact toolbar variants (opt-in via QWidget[compact="true"]) */
+QWidget[compact="true"] {{ font-size: 10pt; }}
+QWidget[compact="true"] QPushButton {{ min-height: 20px; padding: 1px 6px; }}
+QWidget[compact="true"] QComboBox  {{ min-height: 20px; padding: 1px 6px; }}
+QWidget[compact="true"] QLabel     {{ margin: 0px; padding: 0px; }}
+QWidget[compact="true"] QAbstractSpinBox, QWidget[compact="true"] QLineEdit {{
+    min-height: 20px; padding: 1px 6px;
+}}
 """
 
 

@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
     QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
-    QFrame
+    QFrame, QSizePolicy
 )
 from PySide6.QtCore import Qt, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage, QImageReader
@@ -63,8 +63,9 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(16, 16, 16, 16)
-        main_layout.setSpacing(12)
+        # Compact outer margins/spacing
+        main_layout.setContentsMargins(8, 6, 8, 6)
+        main_layout.setSpacing(8)
 
         # Determine theme colors for per-widget overrides
         self._theme = os.environ.get('COLLAGE_THEME', 'light')
@@ -73,8 +74,8 @@ class MainWindow(QMainWindow):
         # Controls and collage
         topbar = self._create_controls_bar()
         main_layout.addWidget(topbar)
-        # Separator under the toolbar
-        sep = QFrame(); sep.setFrameShape(QFrame.HLine); sep.setFrameShadow(QFrame.Sunken)
+        # Separator under the toolbar (thin)
+        sep = QFrame(); sep.setFrameShape(QFrame.HLine); sep.setFrameShadow(QFrame.Sunken); sep.setFixedHeight(1)
         main_layout.addWidget(sep)
         self.collage = CollageWidget(
             rows=self.rows_spin.value(),
@@ -106,9 +107,15 @@ class MainWindow(QMainWindow):
 
     def _create_controls_bar(self) -> QWidget:
         bar = QWidget()
+        # Set compact property BEFORE creating children so QSS attribute selectors match descendants
+        bar.setProperty("compact", "true")
         bar_layout = QHBoxLayout(bar)
-        bar_layout.setContentsMargins(12, 12, 12, 12)
-        bar_layout.setSpacing(8)
+        # Extra compact toolbar margins/spacing
+        bar_layout.setContentsMargins(4, 2, 4, 2)
+        bar_layout.setSpacing(4)
+        # Force the toolbar to stay short
+        bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        bar.setMaximumHeight(30)
 
         # Grid controls
         self.rows_spin = QSpinBox(); self.rows_spin.setRange(1,10); self.rows_spin.setValue(config.DEFAULT_ROWS)
@@ -117,10 +124,12 @@ class MainWindow(QMainWindow):
         QSpinBox {{
             background-color: {self._colors.surface};
             color: {self._colors.text};
+            /* Input border color/thickness */
             border: 1px solid {self._colors.border};
+            /* Corner radius (px) */
             border-radius: 6px;
-            padding: 4px 22px 4px 8px;
-            min-height: 28px;
+            /* Padding: top right bottom left (px) */
+            padding: 2px 14px 2px 6px;\n            /* Min height (px) */ min-height: 22px;
         }}
         QSpinBox QLineEdit {{
             background: transparent;
@@ -142,119 +151,45 @@ class MainWindow(QMainWindow):
 
         # Left group
         left = QWidget(); left_l = QHBoxLayout(left)
-        left_l.setContentsMargins(0,0,0,0); left_l.setSpacing(8)
-        left_l.addWidget(QLabel("Rows:")); left_l.addWidget(self.rows_spin)
-        left_l.addWidget(QLabel("Cols:")); left_l.addWidget(self.cols_spin)
+        left.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        left_l.setContentsMargins(0,0,0,0); left_l.setSpacing(4)
+        rows_label = QLabel("Rows:"); cols_label = QLabel("Cols:")
+        # Fix vertical size of label + spinboxes for a thin toolbar
+        for w in (rows_label, cols_label, self.rows_spin, self.cols_spin):
+            if hasattr(w, 'setFixedHeight'):
+                w.setFixedHeight(22)
+            if hasattr(w, 'setSizePolicy'):
+                w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        left_l.addWidget(rows_label); left_l.addWidget(self.rows_spin)
+        left_l.addWidget(cols_label); left_l.addWidget(self.cols_spin)
         tmpl_label = QLabel("Templates:")
         tmpl = QComboBox(); tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"]) 
         tmpl.setAccessibleName("Templates"); tmpl.setToolTip("Choose a grid template")
         tmpl.currentTextChanged.connect(self._apply_template)
+        tmpl.setFixedHeight(22); tmpl.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         left_l.addWidget(tmpl_label); left_l.addWidget(tmpl)
         update_btn = QPushButton("Update Grid"); update_btn.clicked.connect(self._update_grid); update_btn.setAccessibleName("Update Grid")
         update_btn.setToolTip("Apply rows/cols to rebuild the grid")
+        update_btn.setFixedHeight(22); update_btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         left_l.addWidget(update_btn)
 
         # Right group
         right = QWidget(); right_l = QHBoxLayout(right)
-        right_l.setContentsMargins(0,0,0,0); right_l.setSpacing(8)
+        right.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        right_l.setContentsMargins(0,0,0,0); right_l.setSpacing(4)
         add_btn = QPushButton("Add Images…"); add_btn.clicked.connect(self._add_images); add_btn.setToolTip("Add images to empty cells"); add_btn.setAccessibleName("Add Images")
         clear_btn = QPushButton("Clear All"); clear_btn.clicked.connect(self._reset_collage); clear_btn.setToolTip("Clear all images and merges"); clear_btn.setAccessibleName("Clear All")
         save_btn = QPushButton("Save Collage"); save_btn.clicked.connect(self._show_save_dialog); save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP"); save_btn.setAccessibleName("Save Collage")
-        right_l.addWidget(add_btn); right_l.addWidget(clear_btn); right_l.addWidget(save_btn)
+        for b in (add_btn, clear_btn, save_btn):
+            b.setFixedHeight(22)
+            b.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            right_l.addWidget(b)
 
         bar_layout.addWidget(left)
         bar_layout.addStretch(1)
         bar_layout.addWidget(right)
         return bar
 
-    def _create_controls_bar(self) -> QWidget:
-        bar = QWidget()
-        bar_layout = QHBoxLayout(bar)
-        bar_layout.setContentsMargins(12, 12, 12, 12)
-        bar_layout.setSpacing(8)
-
-        # Grid controls
-        self.rows_spin = QSpinBox()
-        self.rows_spin.setRange(1, 10)
-        self.rows_spin.setValue(config.DEFAULT_ROWS)
-        self.cols_spin = QSpinBox()
-        self.cols_spin.setRange(1, 10)
-        self.cols_spin.setValue(config.DEFAULT_COLUMNS)
-        spin_ss = f"""
-        QSpinBox {{
-            background-color: {self._colors.surface};
-            color: {self._colors.text};
-            border: 1px solid {self._colors.border};
-            border-radius: 6px;
-            padding: 4px 22px 4px 8px;
-            min-height: 28px;
-        }}
-        QSpinBox QLineEdit {{
-            background: transparent;
-            color: {self._colors.text};
-            selection-background-color: {self._colors.focus};
-            selection-color: #ffffff;
-        }}
-        QSpinBox:disabled {{ color: {self._colors.text_muted}; }}
-        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{
-            background: {self._colors.surface};
-            border-left: 1px solid {self._colors.border};
-            width: 22px;
-        }}
-        """
-        self.rows_spin.setStyleSheet(spin_ss)
-        self.cols_spin.setStyleSheet(spin_ss)
-        self.rows_spin.setAccessibleName("Rows")
-        self.cols_spin.setAccessibleName("Columns")
-
-        # Left group
-        left = QWidget()
-        left_l = QHBoxLayout(left)
-        left_l.setContentsMargins(0, 0, 0, 0)
-        left_l.setSpacing(8)
-        left_l.addWidget(QLabel("Rows:"))
-        left_l.addWidget(self.rows_spin)
-        left_l.addWidget(QLabel("Cols:"))
-        left_l.addWidget(self.cols_spin)
-        tmpl_label = QLabel("Templates:")
-        tmpl = QComboBox()
-        tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
-        tmpl.setAccessibleName("Templates")
-        tmpl.setToolTip("Choose a grid template")
-        tmpl.currentTextChanged.connect(self._apply_template)
-        left_l.addWidget(tmpl_label)
-        left_l.addWidget(tmpl)
-        update_btn = QPushButton("Update Grid")
-        update_btn.clicked.connect(self._update_grid)
-        update_btn.setAccessibleName("Update Grid")
-        update_btn.setToolTip("Apply rows/cols to rebuild the grid")
-        left_l.addWidget(update_btn)
-
-        # Right group
-        right = QWidget()
-        right_l = QHBoxLayout(right)
-        right_l.setContentsMargins(0, 0, 0, 0)
-        right_l.setSpacing(8)
-        add_btn = QPushButton("Add Images…")
-        add_btn.clicked.connect(self._add_images)
-        add_btn.setToolTip("Add images to empty cells")
-        add_btn.setAccessibleName("Add Images")
-        clear_btn = QPushButton("Clear All")
-        clear_btn.clicked.connect(self._reset_collage)
-        clear_btn.setToolTip("Clear all images and merges")
-        clear_btn.setAccessibleName("Clear All")
-        save_btn = QPushButton("Save Collage")
-        save_btn.clicked.connect(self._show_save_dialog)
-        save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP")
-        save_btn.setAccessibleName("Save Collage")
-        right_l.addWidget(add_btn)
-        right_l.addWidget(clear_btn)
-        right_l.addWidget(save_btn)
-
-        bar_layout.addWidget(left)
-        bar_layout.addStretch(1)
-        bar_layout.addWidget(right)
-        return bar
 
     # --- Caption Panel ---
     def _create_caption_panel(self):
@@ -659,3 +594,5 @@ if __name__ == '__main__':
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
+
