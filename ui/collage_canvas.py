@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import List, Optional, Dict
 from PySide6.QtWidgets import (
     QWidget, QGridLayout, QMessageBox,
@@ -7,7 +8,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, Signal, QTimer
 from PySide6.QtGui import QPixmap, QPainter, QColor, QImage
 from utils.collage_layouts import CollageLayouts
-from utils.image_processor import ImageProcessor
 from .image_label import ImageLabel
 
 class CollageCanvas(QWidget):
@@ -56,13 +56,17 @@ class CollageCanvas(QWidget):
         self.auto_save_timer = QTimer(self)
         self.auto_save_timer.timeout.connect(self._auto_save)
         self.auto_save_timer.start(self.AUTO_SAVE_INTERVAL)
-        self.temp_save_path = "temp/autosave_collage.tmp"
+        self.temp_save_path = Path("temp") / "autosave_collage.tmp"
+        try:
+            self.temp_save_path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            logging.warning("Unable to create autosave directory '%s': %s", self.temp_save_path.parent, exc)
         
     def _auto_save(self) -> None:
         """Automatically save the current state to a temporary file."""
         if self.canSave():
             try:
-                self._create_collage().save(self.temp_save_path)
+                self._create_collage().save(str(self.temp_save_path))
                 logging.info("Auto-saved collage state")
             except Exception as e:
                 logging.error(f"Auto-save failed: {e}")
@@ -368,6 +372,8 @@ class CollageCanvas(QWidget):
             
         self.SPACING = spacing
         self.grid_layout.setSpacing(spacing)
+        if self.image_labels:
+            self._layout_labels()
         self.update()
         self.collageUpdated.emit()
 
@@ -402,14 +408,22 @@ class CollageCanvas(QWidget):
 
     def dropEvent(self, event) -> None:
         """Handle drop events for images."""
+        accepted = False
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
-            if ImageProcessor.is_valid_image(file_path):
-                empty_label = next((label for label in self.image_labels 
-                                  if not label.original_pixmap), None)
-                if empty_label:
-                    empty_label.setImage(file_path)
-        self.collageUpdated.emit()
+            if not file_path:
+                continue
+            empty_label = next((label for label in self.image_labels
+                               if not label.original_pixmap), None)
+            if not empty_label:
+                break
+            if empty_label.setImage(file_path):
+                accepted = True
+        if accepted:
+            self.collageUpdated.emit()
+            event.acceptProposedAction()
+        else:
+            event.ignore()
 
     def resizeEvent(self, event) -> None:
         """Handle resize events for the collage canvas."""

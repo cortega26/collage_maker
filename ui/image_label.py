@@ -2,8 +2,11 @@ import logging
 from typing import Optional
 from PySide6.QtWidgets import QLabel, QMenu, QAction
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QPixmap, QDragEnterEvent, QDropEvent, QPainter, QColor
-from utils.image_processor import ImageProcessor
+from PySide6.QtGui import QPixmap, QDragEnterEvent, QDropEvent, QPainter, QColor, QImage
+from PIL.ImageQt import ImageQt
+from utils.image_processor import ImageProcessor, ImageProcessingError
+
+_PROCESSOR = ImageProcessor()
 
 class ImageLabel(QLabel):
     """A custom QLabel for handling image display and drag-drop."""
@@ -48,12 +51,14 @@ class ImageLabel(QLabel):
         """Handle drop events for images."""
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
-            if ImageProcessor.is_valid_image(file_path):
-                self.setImage(file_path)
-                break
-        event.acceptProposedAction()
+            if not file_path:
+                continue
+            if self.setImage(file_path):
+                event.acceptProposedAction()
+                return
+        event.ignore()
 
-    def setImage(self, file_path: str):
+    def setImage(self, file_path: str) -> bool:
         """
         Set the image from the given file path.
         
@@ -61,18 +66,25 @@ class ImageLabel(QLabel):
             file_path (str): Path to the image file.
         """
         try:
-            pixmap = QPixmap(file_path)
-            if not pixmap.isNull():
-                self.original_pixmap = pixmap
-                self._update_pixmap()
-                self.setProperty('hasImage', True)
-                self.style().unpolish(self); self.style().polish(self)
-                self.imageDropped.emit()
-            else:
-                raise ValueError("Invalid image file")
-        except Exception as e:
+            original_image = _PROCESSOR.process_image(file_path, [])
+            original_qimage = QImage(ImageQt(original_image.copy()))
+            original_pixmap = QPixmap.fromImage(original_qimage)
+            if original_pixmap.isNull():
+                raise ValueError("Converted pixmap is null")
+            self.original_pixmap = original_pixmap
+            self._update_pixmap()
+            self.setProperty('hasImage', True)
+            self.style().unpolish(self); self.style().polish(self)
+            self.imageDropped.emit()
+            return True
+        except (ImageProcessingError, ValueError) as e:
             logging.error(f"Error loading image {file_path}: {str(e)}")
             self.setText("Error loading image")
+            return False
+        except Exception as e:
+            logging.error(f"Unexpected error loading image {file_path}: {str(e)}")
+            self.setText("Error loading image")
+            return False
 
     def setPixmap(self, pixmap: QPixmap):
         """

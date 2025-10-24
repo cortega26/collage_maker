@@ -5,12 +5,14 @@ Entry point and main application window for Collage Maker.
 import sys
 import os
 import logging
+import copy
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
+    QGridLayout, QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
     QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
-    QFrame, QSizePolicy, QPlainTextEdit, QFontComboBox, QColorDialog
+    QFrame, QSizePolicy, QFontComboBox, QColorDialog
 )
 from PySide6.QtCore import Qt, QPoint, QStandardPaths
 from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage, QImageReader
@@ -74,17 +76,14 @@ class MainWindow(QMainWindow):
         self._colors = style_tokens.get_colors(theme=self._theme)
 
         # Controls and collage
-        topbar = self._create_controls_bar()
-        main_layout.addWidget(topbar)
+        control_panel = self._create_control_panel()
+        main_layout.addWidget(control_panel)
         # Separator under the toolbar (thin)
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
         sep.setFrameShadow(QFrame.Sunken)
         sep.setFixedHeight(1)
         main_layout.addWidget(sep)
-        # Caption tools
-        self.caption_panel = self._create_caption_panel()
-        main_layout.addWidget(self.caption_panel)
         self.collage = CollageWidget(
             rows=self.rows_spin.value(),
             columns=self.cols_spin.value(),
@@ -111,19 +110,24 @@ class MainWindow(QMainWindow):
         # Shortcuts
         self._create_shortcuts()
 
+        # History tracking for undo / redo
+        self._init_history_tracking()
+
         logging.info("MainWindow initialized.")
 
-    def _create_controls_bar(self) -> QWidget:
-        bar = QWidget()
-        # Set compact property BEFORE creating children so QSS attribute selectors match descendants
-        bar.setProperty("compact", "true")
-        bar_layout = QHBoxLayout(bar)
-        # Extra compact toolbar margins/spacing
-        bar_layout.setContentsMargins(4, 2, 4, 2)
-        bar_layout.setSpacing(4)
-        # Force the toolbar to stay short
-        bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        bar.setMaximumHeight(30)
+    def _create_control_panel(self) -> QWidget:
+        panel = QFrame()
+        panel.setObjectName("controlPanel")
+        panel.setProperty("compact", "true")
+        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        panel.setFixedHeight(118)
+
+        layout = QGridLayout(panel)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setHorizontalSpacing(12)
+        layout.setVerticalSpacing(8)
+
+        control_height = 30
 
         # Grid controls
         self.rows_spin = QSpinBox()
@@ -136,151 +140,185 @@ class MainWindow(QMainWindow):
         QSpinBox {{
             background-color: {self._colors.surface};
             color: {self._colors.text};
-            /* Input border color/thickness */
             border: 1px solid {self._colors.border};
-            /* Corner radius (px) */
             border-radius: 6px;
-            /* Padding: top right bottom left (px) */
-            padding: 2px 14px 2px 6px;\n            /* Min height (px) */ min-height: 22px;
+            padding: 1px 12px 1px 8px;\n            min-height: {control_height}px;
         }}
         QSpinBox QLineEdit {{
             background: transparent;
             color: {self._colors.text};
             selection-background-color: {self._colors.focus};
             selection-color: #ffffff;
+            padding: 0px;
         }}
         QSpinBox:disabled {{ color: {self._colors.text_muted}; }}
         QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{
             background: {self._colors.surface};
             border-left: 1px solid {self._colors.border};
-            width: 22px;
+            width: 18px;
+            margin: 1px 0px;
         }}
         """
         self.rows_spin.setStyleSheet(spin_ss)
         self.cols_spin.setStyleSheet(spin_ss)
         self.rows_spin.setAccessibleName("Rows")
         self.cols_spin.setAccessibleName("Columns")
+        self.rows_spin.setFixedHeight(control_height)
+        self.cols_spin.setFixedHeight(control_height)
+        self.rows_spin.setMaximumWidth(80)
+        self.cols_spin.setMaximumWidth(80)
 
-        # Left group
-        left = QWidget()
-        left_l = QHBoxLayout(left)
-        left.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        left_l.setContentsMargins(0, 0, 0, 0)
-        left_l.setSpacing(4)
-        rows_label = QLabel("Rows:")
-        cols_label = QLabel("Cols:")
-        # Fix vertical size of label + spinboxes for a thin toolbar
-        for w in (rows_label, cols_label, self.rows_spin, self.cols_spin):
-            if hasattr(w, 'setFixedHeight'):
-                w.setFixedHeight(22)
-            if hasattr(w, 'setSizePolicy'):
-                w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        left_l.addWidget(rows_label)
-        left_l.addWidget(self.rows_spin)
-        left_l.addWidget(cols_label)
-        left_l.addWidget(self.cols_spin)
-        tmpl_label = QLabel("Templates:")
-        tmpl = QComboBox()
-        tmpl.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
-        tmpl.setAccessibleName("Templates")
-        tmpl.setToolTip("Choose a grid template")
-        tmpl.currentTextChanged.connect(self._apply_template)
-        tmpl.setFixedHeight(22)
-        tmpl.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        left_l.addWidget(tmpl_label)
-        left_l.addWidget(tmpl)
+        self.template_combo = QComboBox()
+        self.template_combo.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
+        self.template_combo.setAccessibleName("Templates")
+        self.template_combo.setToolTip("Choose a grid template")
+        self.template_combo.currentTextChanged.connect(self._apply_template)
+        self.template_combo.setFixedHeight(control_height)
+        self.template_combo.setMinimumWidth(120)
+        combo_ss = f"""
+        QComboBox {{
+            background-color: {self._colors.surface};
+            color: {self._colors.text};
+            border: 1px solid {self._colors.border};
+            border-radius: 6px;
+            padding: 1px 24px 1px 8px;\n            min-height: {control_height}px;
+        }}
+        QComboBox::drop-down {{
+            width: 22px;
+            border-left: 1px solid {self._colors.border};
+            margin: 1px 1px 1px 0px;
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: {self._colors.surface};
+            color: {self._colors.text};
+            border: 1px solid {self._colors.border};
+        }}
+        """
+        self.template_combo.setStyleSheet(combo_ss)
+
         update_btn = QPushButton("Update Grid")
         update_btn.clicked.connect(self._update_grid)
         update_btn.setAccessibleName("Update Grid")
         update_btn.setToolTip("Apply rows/cols to rebuild the grid")
-        update_btn.setFixedHeight(22)
-        update_btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        left_l.addWidget(update_btn)
 
-        # Right group
-        right = QWidget()
-        right_l = QHBoxLayout(right)
-        right.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        right_l.setContentsMargins(0, 0, 0, 0)
-        right_l.setSpacing(4)
         add_btn = QPushButton("Add Images…")
         add_btn.clicked.connect(self._add_images)
         add_btn.setToolTip("Add images to empty cells")
         add_btn.setAccessibleName("Add Images")
+
+        merge_btn = QPushButton("Merge")
+        merge_btn.clicked.connect(self._merge_selected_cells)
+        merge_btn.setToolTip("Merge selected cells into one region")
+        merge_btn.setAccessibleName("Merge Cells")
+
+        split_btn = QPushButton("Split")
+        split_btn.clicked.connect(self._split_selected_cells)
+        split_btn.setToolTip("Split a merged cell back into single cells")
+        split_btn.setAccessibleName("Split Cells")
+
         clear_btn = QPushButton("Clear All")
         clear_btn.clicked.connect(self._reset_collage)
         clear_btn.setToolTip("Clear all images and merges")
         clear_btn.setAccessibleName("Clear All")
+
         save_btn = QPushButton("Save Collage")
         save_btn.clicked.connect(self._show_save_dialog)
         save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP")
         save_btn.setAccessibleName("Save Collage")
-        for b in (add_btn, clear_btn, save_btn):
-            b.setFixedHeight(22)
-            b.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-            right_l.addWidget(b)
 
-        bar_layout.addWidget(left)
-        bar_layout.addStretch(1)
-        bar_layout.addWidget(right)
-        return bar
+        for btn in (update_btn, add_btn, merge_btn, split_btn, clear_btn, save_btn):
+            btn.setFixedHeight(control_height)
+            btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-    # --- Caption Panel ---
-
-    def _create_caption_panel(self):
-        panel = QWidget()
-        layout = QHBoxLayout(panel)
-        layout.setContentsMargins(4, 0, 4, 0)
-        layout.setSpacing(6)
-        # Text inputs
-        self.top_edit = QPlainTextEdit()
-        self.top_edit.setPlaceholderText("Top Caption")
-        self.bottom_edit = QPlainTextEdit()
-        self.bottom_edit.setPlaceholderText("Bottom Caption")
-        self.top_edit.setFixedHeight(48)
-        self.bottom_edit.setFixedHeight(48)
-        layout.addWidget(QLabel("Top:"))
-        layout.addWidget(self.top_edit)
-        layout.addWidget(QLabel("Bottom:"))
-        layout.addWidget(self.bottom_edit)
-
-        # Visibility toggles
+        # Caption controls
         self.top_visible_chk = QCheckBox("Show Top")
         self.top_visible_chk.setChecked(True)
         self.bottom_visible_chk = QCheckBox("Show Bottom")
         self.bottom_visible_chk.setChecked(True)
-        layout.addWidget(self.top_visible_chk)
-        layout.addWidget(self.bottom_visible_chk)
+        for chk in (self.top_visible_chk, self.bottom_visible_chk):
+            chk.setFixedHeight(control_height)
+            chk.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        # Style controls (shared)
         self.font_combo = QFontComboBox()
         self.font_combo.setCurrentText("Impact")
+        self.font_combo.setFixedHeight(control_height)
+        self.font_combo.setMinimumWidth(160)
+        self.font_combo.setStyleSheet(combo_ss)
+
         self.min_size_spin = QSpinBox()
         self.min_size_spin.setRange(6, 64)
         self.min_size_spin.setValue(12)
+        self.min_size_spin.setFixedHeight(control_height)
+        self.min_size_spin.setMaximumWidth(80)
+
         self.max_size_spin = QSpinBox()
         self.max_size_spin.setRange(8, 128)
         self.max_size_spin.setValue(48)
+        self.max_size_spin.setFixedHeight(control_height)
+        self.max_size_spin.setMaximumWidth(80)
+
         self.stroke_width_spin = QSpinBox()
         self.stroke_width_spin.setRange(0, 16)
         self.stroke_width_spin.setValue(3)
-        self.uppercase_chk = QCheckBox("UPPERCASE")
-        self.uppercase_chk.setChecked(True)
+        self.stroke_width_spin.setFixedHeight(control_height)
+        self.stroke_width_spin.setMaximumWidth(80)
+
         self.stroke_btn = QPushButton("Stroke Color")
         self.fill_btn = QPushButton("Fill Color")
-        layout.addWidget(QLabel("Font:"))
-        layout.addWidget(self.font_combo)
-        layout.addWidget(QLabel("Min:"))
-        layout.addWidget(self.min_size_spin)
-        layout.addWidget(QLabel("Max:"))
-        layout.addWidget(self.max_size_spin)
-        layout.addWidget(QLabel("Stroke:"))
-        layout.addWidget(self.stroke_width_spin)
-        layout.addWidget(self.stroke_btn)
-        layout.addWidget(self.fill_btn)
-        layout.addWidget(self.uppercase_chk)
+        for btn in (self.stroke_btn, self.fill_btn):
+            btn.setFixedHeight(control_height)
+            btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-        # Debounce timer for live preview
+        self.uppercase_chk = QCheckBox("UPPERCASE")
+        self.uppercase_chk.setChecked(True)
+        self.uppercase_chk.setFixedHeight(control_height)
+        self.uppercase_chk.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        # Layout population
+        rows_label = QLabel("Rows:")
+        cols_label = QLabel("Cols:")
+        tmpl_label = QLabel("Templates:")
+        font_label = QLabel("Font:")
+        min_label = QLabel("Min:")
+        max_label = QLabel("Max:")
+        stroke_label = QLabel("Stroke:")
+        labels = [rows_label, cols_label, tmpl_label, font_label, min_label, max_label, stroke_label]
+        for lbl in labels:
+            lbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            lbl.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
+
+        layout.addWidget(rows_label, 0, 0)
+        layout.addWidget(self.rows_spin, 0, 1)
+        layout.addWidget(cols_label, 0, 2)
+        layout.addWidget(self.cols_spin, 0, 3)
+        layout.addWidget(tmpl_label, 0, 4)
+        layout.addWidget(self.template_combo, 0, 5)
+        layout.addWidget(update_btn, 0, 6)
+        layout.addWidget(add_btn, 0, 7)
+        layout.addWidget(merge_btn, 0, 8)
+        layout.addWidget(split_btn, 0, 9)
+        layout.addWidget(clear_btn, 0, 10)
+        layout.addWidget(save_btn, 0, 11)
+
+        layout.addWidget(self.top_visible_chk, 1, 0)
+        layout.addWidget(self.bottom_visible_chk, 1, 1)
+        layout.addWidget(font_label, 1, 2)
+        layout.addWidget(self.font_combo, 1, 3)
+        layout.addWidget(min_label, 1, 4)
+        layout.addWidget(self.min_size_spin, 1, 5)
+        layout.addWidget(max_label, 1, 6)
+        layout.addWidget(self.max_size_spin, 1, 7)
+        layout.addWidget(stroke_label, 1, 8)
+        layout.addWidget(self.stroke_width_spin, 1, 9)
+        layout.addWidget(self.stroke_btn, 1, 10)
+        layout.addWidget(self.fill_btn, 1, 11)
+        layout.addWidget(self.uppercase_chk, 1, 12)
+
+        layout.setColumnStretch(5, 1)
+        layout.setColumnStretch(3, 2)
+        layout.setColumnStretch(12, 1)
+
+        # Debounce timer for live caption preview
         from PySide6.QtCore import QTimer
         self.caption_timer = QTimer(self)
         self.caption_timer.setSingleShot(True)
@@ -288,29 +326,14 @@ class MainWindow(QMainWindow):
         self.caption_timer.timeout.connect(self._apply_captions_now)
 
         # Wire inputs
-        self.top_edit.textChanged.connect(lambda: self.caption_timer.start())
-        self.bottom_edit.textChanged.connect(
-            lambda: self.caption_timer.start())
-        self.top_visible_chk.toggled.connect(
-            lambda _: self._apply_captions_now())
-        self.bottom_visible_chk.toggled.connect(
-            lambda _: self._apply_captions_now())
-        self.font_combo.currentFontChanged.connect(
-            lambda _: self._apply_captions_now())
+        self.top_visible_chk.toggled.connect(lambda _: self._apply_captions_now())
+        self.bottom_visible_chk.toggled.connect(lambda _: self._apply_captions_now())
+        self.font_combo.currentFontChanged.connect(lambda _: self._apply_captions_now())
         for sp in (self.min_size_spin, self.max_size_spin, self.stroke_width_spin):
             sp.valueChanged.connect(lambda _: self._apply_captions_now())
-        self.uppercase_chk.toggled.connect(
-            lambda _: self._apply_captions_now())
+        self.uppercase_chk.toggled.connect(lambda _: self._apply_captions_now())
         self.stroke_btn.clicked.connect(lambda: self._pick_color('stroke'))
         self.fill_btn.clicked.connect(lambda: self._pick_color('fill'))
-
-        # Shortcuts
-        QShortcut(QKeySequence("T"), self,
-                  activated=lambda: self.top_edit.setFocus())
-        QShortcut(QKeySequence("B"), self,
-                  activated=lambda: self.bottom_edit.setFocus())
-        QShortcut(QKeySequence("Ctrl+Return"), self,
-                  activated=self._apply_captions_now)
 
         return panel
 
@@ -327,8 +350,6 @@ class MainWindow(QMainWindow):
             cell.update()
 
     def _apply_captions_now(self):
-        top_text = self.top_edit.toPlainText()
-        bottom_text = self.bottom_edit.toPlainText()
         show_top = self.top_visible_chk.isChecked()
         show_bottom = self.bottom_visible_chk.isChecked()
         family = self.font_combo.currentFont().family()
@@ -337,16 +358,17 @@ class MainWindow(QMainWindow):
         stroke_w = self.stroke_width_spin.value()
         upper = self.uppercase_chk.isChecked()
         for cell in [c for c in self.collage.cells if getattr(c, 'selected', False)]:
-            cell.top_caption = top_text
-            cell.bottom_caption = bottom_text
-            cell.show_top_caption = show_top
-            cell.show_bottom_caption = show_bottom
+            if cell.top_caption:
+                cell.show_top_caption = show_top
+            if cell.bottom_caption:
+                cell.show_bottom_caption = show_bottom
             cell.caption_font_family = family
             cell.caption_min_size = min_sz
             cell.caption_max_size = max_sz
             cell.caption_stroke_width = stroke_w
             cell.caption_uppercase = upper
             cell.update()
+
 
     def _create_shortcuts(self):
         QShortcut(QKeySequence(config.SAVE_SHORTCUT),
@@ -360,10 +382,50 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+O"), self, activated=self._add_images)
         QShortcut(QKeySequence("Ctrl+Shift+C"), self,
                   activated=self._reset_collage)
+        QShortcut(QKeySequence("Ctrl+M"), self, activated=self._merge_selected_cells)
+        QShortcut(QKeySequence("Ctrl+Shift+M"), self, activated=self._split_selected_cells)
+
+    # --- Undo / Redo helpers ---
+    def _init_history_tracking(self) -> None:
+        self._history_limit = 30
+        self._undo_stack: List[Dict[str, Any]] = []
+        self._redo_stack: List[Dict[str, Any]] = []
+        self._is_restoring_state = False
+        self._history_baseline: Dict[str, Any] = copy.deepcopy(self.get_collage_state())
+
+    def _capture_for_undo(self) -> bool:
+        """Store the current baseline before a modifying action."""
+        if self._is_restoring_state:
+            return False
+        snapshot = copy.deepcopy(self._history_baseline)
+        self._undo_stack.append(snapshot)
+        if len(self._undo_stack) > self._history_limit:
+            self._undo_stack.pop(0)
+        self._redo_stack.clear()
+        return True
+
+    def _discard_latest_snapshot(self) -> None:
+        if self._undo_stack:
+            self._undo_stack.pop()
+
+    def _update_history_baseline(self) -> None:
+        self._history_baseline = copy.deepcopy(self.get_collage_state())
 
     def _update_grid(self):
-        self.collage.update_grid(
-            self.rows_spin.value(), self.cols_spin.value())
+        rows = self.rows_spin.value()
+        cols = self.cols_spin.value()
+        if rows == self.collage.rows and cols == self.collage.columns:
+            return
+        captured = self._capture_for_undo()
+        try:
+            self.collage.update_grid(rows, cols)
+        except Exception as exc:
+            if captured:
+                self._discard_latest_snapshot()
+            raise exc
+        else:
+            if captured:
+                self._update_history_baseline()
 
     def _apply_template(self, name: str):
         try:
@@ -375,14 +437,102 @@ class MainWindow(QMainWindow):
             pass
 
     def _reset_collage(self):
+        has_content = any(
+            getattr(cell, "pixmap", None) or getattr(cell, "caption", "")
+            for cell in self.collage.cells
+        ) or bool(getattr(self.collage, "merged_cells", {}))
+        if not has_content:
+            return
+        captured = self._capture_for_undo()
         self.collage.clear()
+        if captured:
+            self._update_history_baseline()
+
+    def _restore_state(self, state: Dict[str, Any]) -> None:
+        if not state:
+            return
+        self._is_restoring_state = True
+        try:
+            controls = state.get("controls", {})
+            captions = state.get("captions", {})
+            collage_state = state.get("collage", {})
+
+            if collage_state:
+                self.collage.restore_from_serialized(collage_state)
+
+            if controls:
+                rows = controls.get("rows", self.rows_spin.value())
+                cols = controls.get("columns", self.cols_spin.value())
+                template = controls.get("template")
+
+                self.rows_spin.blockSignals(True)
+                self.rows_spin.setValue(rows)
+                self.rows_spin.blockSignals(False)
+
+                self.cols_spin.blockSignals(True)
+                self.cols_spin.setValue(cols)
+                self.cols_spin.blockSignals(False)
+
+                if template and self.template_combo is not None:
+                    if template in [self.template_combo.itemText(i) for i in range(self.template_combo.count())]:
+                        self.template_combo.blockSignals(True)
+                        self.template_combo.setCurrentText(template)
+                        self.template_combo.blockSignals(False)
+
+            if captions:
+                self.top_visible_chk.blockSignals(True)
+                self.top_visible_chk.setChecked(bool(captions.get("show_top", True)))
+                self.top_visible_chk.blockSignals(False)
+
+                self.bottom_visible_chk.blockSignals(True)
+                self.bottom_visible_chk.setChecked(bool(captions.get("show_bottom", True)))
+                self.bottom_visible_chk.blockSignals(False)
+
+                font_family = captions.get("font_family")
+                if font_family:
+                    self.font_combo.blockSignals(True)
+                    self.font_combo.setCurrentText(font_family)
+                    self.font_combo.blockSignals(False)
+
+                self.min_size_spin.blockSignals(True)
+                self.min_size_spin.setValue(int(captions.get("min_size", self.min_size_spin.value())))
+                self.min_size_spin.blockSignals(False)
+
+                self.max_size_spin.blockSignals(True)
+                self.max_size_spin.setValue(int(captions.get("max_size", self.max_size_spin.value())))
+                self.max_size_spin.blockSignals(False)
+
+                self.stroke_width_spin.blockSignals(True)
+                self.stroke_width_spin.setValue(int(captions.get("stroke_width", self.stroke_width_spin.value())))
+                self.stroke_width_spin.blockSignals(False)
+
+                self.uppercase_chk.blockSignals(True)
+                self.uppercase_chk.setChecked(bool(captions.get("uppercase", self.uppercase_chk.isChecked())))
+                self.uppercase_chk.blockSignals(False)
+        finally:
+            self._is_restoring_state = False
+        self._update_history_baseline()
+        self.collage.update()
 
     def _undo(self):
-        # Unimplemented: placeholder for undo stack
-        pass
+        if not self._undo_stack:
+            return
+        snapshot = self._undo_stack.pop()
+        current = copy.deepcopy(self.get_collage_state())
+        self._redo_stack.append(current)
+        if len(self._redo_stack) > self._history_limit:
+            self._redo_stack.pop(0)
+        self._restore_state(snapshot)
 
     def _redo(self):
-        pass
+        if not self._redo_stack:
+            return
+        snapshot = self._redo_stack.pop()
+        current = copy.deepcopy(self.get_collage_state())
+        self._undo_stack.append(current)
+        if len(self._undo_stack) > self._history_limit:
+            self._undo_stack.pop(0)
+        self._restore_state(snapshot)
 
     def _select_all(self):
         for cell in self.collage.cells:
@@ -390,9 +540,78 @@ class MainWindow(QMainWindow):
             cell.update()
 
     def _delete_selected(self):
+        targets = [
+            cell for cell in self.collage.cells
+            if cell.selected and (
+                getattr(cell, "pixmap", None)
+                or getattr(cell, "caption", "")
+                or getattr(cell, "top_caption", "")
+                or getattr(cell, "bottom_caption", "")
+            )
+        ]
+        if not targets:
+            return
+        captured = self._capture_for_undo()
+        for cell in targets:
+            cell.clearImage()
+        if captured:
+            self._update_history_baseline()
+
+    def _merge_selected_cells(self):
+        rect = self.collage.selected_rectangle()
+        if not rect:
+            QMessageBox.information(
+                self,
+                "Merge Cells",
+                "Select two or more adjacent cells to merge into a single region."
+            )
+            return
+        captured = self._capture_for_undo()
+        if not self.collage.merge_cells(*rect):
+            if captured:
+                self._discard_latest_snapshot()
+            QMessageBox.information(
+                self,
+                "Merge Cells",
+                "Could not merge the selected cells."
+            )
+            return
+        target = self.collage.get_cell_at(rect[0], rect[1])
+        if target:
+            target.selected = True
+        if captured:
+            self._update_history_baseline()
+
+    def _split_selected_cells(self):
+        target_pos: Optional[tuple[int, int]] = None
         for cell in self.collage.cells:
-            if cell.selected:
-                cell.clearImage()
+            if not getattr(cell, "selected", False):
+                continue
+            if getattr(cell, "row_span", 1) == 1 and getattr(cell, "col_span", 1) == 1:
+                continue
+            position = self.collage.get_cell_position(cell)
+            if position:
+                target_pos = position
+                break
+        if not target_pos:
+            QMessageBox.information(
+                self,
+                "Split Cells",
+                "Select a merged cell to split back into individual cells."
+            )
+            return
+        captured = self._capture_for_undo()
+        if not self.collage.split_cells(*target_pos):
+            if captured:
+                self._discard_latest_snapshot()
+            QMessageBox.information(
+                self,
+                "Split Cells",
+                "Could not split the selected merged cell."
+            )
+            return
+        if captured:
+            self._update_history_baseline()
 
     def _show_save_dialog(self, default_original: bool = False):
         opts = self._prompt_save_options(default_original)
@@ -538,6 +757,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self, "No Empty Cells", "All cells already contain images.")
             return
+        captured = self._capture_for_undo()
         assigned = 0
         for path, cell in zip(files, empty_cells):
             try:
@@ -555,6 +775,10 @@ class MainWindow(QMainWindow):
                 assigned += 1
             except Exception as e:
                 logging.warning("Failed to add image %s: %s", path, e)
+        if assigned == 0 and captured:
+            self._discard_latest_snapshot()
+        elif captured and assigned > 0:
+            self._update_history_baseline()
         if assigned < len(files):
             QMessageBox.information(
                 self, "Some files skipped", f"Added {assigned} images; others could not be loaded or no empty cells left.")
@@ -613,13 +837,27 @@ class MainWindow(QMainWindow):
         logging.info("Saved original collage to %s", path)
 
     def get_collage_state(self):
-        # Serialize minimal state for autosave
-        state = {
-            'rows': self.collage.rows,
-            'columns': self.collage.columns,
-            # Further details omitted for brevity
+        """Return a richer snapshot for autosave and recovery."""
+        collage_state = self.collage.serialize_for_autosave()
+        controls_state = {
+            'rows': self.rows_spin.value(),
+            'columns': self.cols_spin.value(),
+            'template': self.template_combo.currentText() if hasattr(self, 'template_combo') else None,
         }
-        return state
+        captions_state = {
+            'show_top': self.top_visible_chk.isChecked(),
+            'show_bottom': self.bottom_visible_chk.isChecked(),
+            'font_family': self.font_combo.currentText(),
+            'min_size': self.min_size_spin.value(),
+            'max_size': self.max_size_spin.value(),
+            'stroke_width': self.stroke_width_spin.value(),
+            'uppercase': self.uppercase_chk.isChecked(),
+        }
+        return {
+            'collage': collage_state,
+            'controls': controls_state,
+            'captions': captions_state,
+        }
 
 
 if __name__ == '__main__':

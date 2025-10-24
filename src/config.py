@@ -7,7 +7,8 @@ Application configuration constants for Collage Maker
 DEFAULT_ROWS = 2
 DEFAULT_COLUMNS = 2
 DEFAULT_CELL_SIZE = 260
-DEFAULT_SPACING = 2
+# UI spacing (pixels)
+DEFAULT_SPACING = 8
 
 # Cache settings
 MAX_CACHE_SIZE = 50

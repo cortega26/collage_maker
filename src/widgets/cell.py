@@ -90,16 +90,37 @@ class CollageCell(QWidget):
 
         self.setAcceptDrops(True)
         self.setFixedSize(cell_size, cell_size)
-        self.selected = False
+        self._selected = False
+        self.setProperty('selected', False)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setAccessibleName(f"Collage Cell {cell_id}")
 
         logging.info("Cell %d created; size %dx%d", cell_id, cell_size, cell_size)
 
+    @property
+    def selected(self) -> bool:
+        return getattr(self, "_selected", False)
+
+    @selected.setter
+    def selected(self, value: bool) -> None:
+        new_val = bool(value)
+        if getattr(self, "_selected", False) == new_val:
+            return
+        self._selected = new_val
+        self.setProperty('selected', new_val)
+        style = self.style()
+        if style:
+            style.unpolish(self)
+            style.polish(self)
+        self.update()
+
     def setImage(self, pixmap: QPixmap, *, original: Optional[QPixmap] = None) -> None:
         """Set the display pixmap while preserving an optional original."""
         self.pixmap = pixmap
-        self.original_pixmap = original or pixmap
+        if original is not None:
+            self.original_pixmap = original
+        elif self.original_pixmap is None:
+            self.original_pixmap = pixmap
         self.update()
         logging.info("Cell %d: image set.", self.cell_id)
 
@@ -117,27 +138,41 @@ class CollageCell(QWidget):
             painter.setRenderHint(QPainter.Antialiasing)
             painter.setRenderHint(QPainter.SmoothPixmapTransform)
             painter.setRenderHint(QPainter.TextAntialiasing)
-            if not self.pixmap:
-                self._draw_placeholder(painter)
-                return
-            img_rect = self._draw_image(painter)
-            # Legacy single-caption support
-            if self.caption and not self.top_caption and not self.bottom_caption:
-                self._draw_legacy_caption(painter)
-            # Meme-style captions
+            img_rect = None
             self._top_caption_overflow = False
             self._bottom_caption_overflow = False
-            if self.show_top_caption and self.top_caption:
-                self._top_caption_overflow = self._draw_meme_caption(painter, img_rect, self.top_caption, position="top")
-            if self.show_bottom_caption and self.bottom_caption:
-                self._bottom_caption_overflow = self._draw_meme_caption(painter, img_rect, self.bottom_caption, position="bottom")
-            # Update tooltip based on overflow
+            if not self.pixmap:
+                self._draw_placeholder(painter)
+            else:
+                img_rect = self._draw_image(painter)
+                # Legacy single-caption support
+                if self.caption and not self.top_caption and not self.bottom_caption:
+                    self._draw_legacy_caption(painter)
+                # Meme-style captions
+                if self.show_top_caption and self.top_caption:
+                    self._top_caption_overflow = self._draw_meme_caption(painter, img_rect, self.top_caption, position="top")
+                if self.show_bottom_caption and self.bottom_caption:
+                    self._bottom_caption_overflow = self._draw_meme_caption(painter, img_rect, self.bottom_caption, position="bottom")
+            # Update tooltip based on overflow (only meaningful when image exists)
             tips = []
             if self._top_caption_overflow:
                 tips.append("Top caption too long for image")
             if self._bottom_caption_overflow:
                 tips.append("Bottom caption too long for image")
             self.setToolTip("; ".join(tips) if tips else "")
+            if self.selected:
+                painter.save()
+                highlight = QColor(29, 78, 216, 40)  # subtle focus overlay
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(highlight)
+                painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 6, 6)
+                pen = QPen(QColor(29, 78, 216))
+                pen.setWidth(3)
+                pen.setJoinStyle(Qt.RoundJoin)
+                painter.setPen(pen)
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 6, 6)
+                painter.restore()
         finally:
             painter.end()
 
@@ -273,7 +308,6 @@ class CollageCell(QWidget):
         # Toggle selection
         if event.modifiers() & Qt.ControlModifier:
             self.selected = not self.selected
-            self.update()
             logging.info("Cell %d: selected=%s", self.cell_id, self.selected)
             return
 
@@ -294,27 +328,30 @@ class CollageCell(QWidget):
 
     def mouseDoubleClickEvent(self, event):
         if not self.pixmap:
+            return super().mouseDoubleClickEvent(event)
+
+        if event is None:
+            self._edit_top_caption()
             return
-        new_caption, ok = QInputDialog.getText(
-            self, "Edit Caption", "Enter caption:", text=self.caption
-        )
-        if ok:
-            self.caption = new_caption
-            self.update()
-            logging.info("Cell %d: caption='%s'", self.cell_id, self.caption)
+
+        y = event.position().y() if hasattr(event, "position") else event.pos().y()
+        if y < self.height() / 2:
+            self._edit_top_caption()
+        else:
+            self._edit_bottom_caption()
+        event.accept()
 
     def keyPressEvent(self, event):
         """Basic keyboard accessibility: Space toggles selection; Delete clears; Enter edits caption."""
         if event.key() in (Qt.Key_Space,):
             self.selected = not self.selected
-            self.update()
             event.accept(); return
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             self.clearImage()
             event.accept(); return
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             if self.pixmap:
-                self.mouseDoubleClickEvent(None)
+                self._edit_top_caption()
                 event.accept(); return
         super().keyPressEvent(event)
 
@@ -364,12 +401,14 @@ class CollageCell(QWidget):
         text = self._prompt_multiline("Top Caption", "Enter top caption:", self.top_caption)
         if text is not None:
             self.top_caption = text
+            self.show_top_caption = bool(text.strip())
             self.update()
 
     def _edit_bottom_caption(self) -> None:
         text = self._prompt_multiline("Bottom Caption", "Enter bottom caption:", self.bottom_caption)
         if text is not None:
             self.bottom_caption = text
+            self.show_bottom_caption = bool(text.strip())
             self.update()
 
     def _toggle_top(self, checked: bool) -> None:
@@ -403,7 +442,7 @@ class CollageCell(QWidget):
             pil_img = self._qimage_to_pil()
             result = pil_apply_filter(pil_img, name)
             new_pix = self._pil_to_qpixmap(result)
-            self.setImage(new_pix, original=new_pix)
+            self.setImage(new_pix)
         except Exception as e:
             logging.error("Cell %d: filter '%s' failed: %s", self.cell_id, name, e)
 
@@ -419,7 +458,7 @@ class CollageCell(QWidget):
             else:
                 return
             new_pix = self._pil_to_qpixmap(result)
-            self.setImage(new_pix, original=new_pix)
+            self.setImage(new_pix)
         except Exception as e:
             logging.error("Cell %d: adjustment '%s' failed: %s", self.cell_id, kind, e)
 

@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 from src.cache import ImageCache
 from .image_operations import apply_operations
-from .validation import validate_image_path
+from .validation import validate_image_path, validate_output_path
 
 @dataclass(slots=True)
 class ImageInfo:
@@ -97,6 +97,7 @@ class ImageProcessor:
         try:
             # Validate input
             safe_path = validate_image_path(image_path, self.VALID_EXTENSIONS)
+            safe_output: Optional[Path] = None
 
             # Generate cache key
             cache_key = self._generate_cache_key(safe_path, operations)
@@ -124,7 +125,8 @@ class ImageProcessor:
                 
                 # Save if output path provided
                 if output_path:
-                    self._save_image(result, output_path)
+                    safe_output = validate_output_path(output_path, self.VALID_EXTENSIONS)
+                    self._save_image(result, safe_output)
                 
                 return result
                 
@@ -262,8 +264,12 @@ class ImageProcessor:
             
         for path, future in futures:
             try:
-                future.result()
-                results[str(path)] = True
+                outcome = future.result()
+                if isinstance(outcome, bool):
+                    success = outcome
+                else:
+                    success = outcome is not None
+                results[str(path)] = success
             except Exception as e:
                 logging.error(f"Failed to process {path}: {e}")
                 results[str(path)] = False

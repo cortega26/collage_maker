@@ -144,6 +144,12 @@ QFrame#card {{
     border-radius: {radius.lg}px;
     padding: {space(3)}px;
 }}
+QFrame#controlPanel {{
+    background-color: {colors.surface};
+    border: 1px solid {colors.border};
+    border-radius: {radius.lg}px;
+    padding: {space(2)}px {space(3)}px;
+}}
 
 /* Image frame (CollageCell) */
 CollageCell {{
