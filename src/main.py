@@ -120,29 +120,20 @@ class MainWindow(QMainWindow):
         panel.setObjectName("controlPanel")
         panel.setProperty("compact", "true")
         panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        panel.setFixedHeight(118)
 
-        layout = QGridLayout(panel)
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setHorizontalSpacing(12)
-        layout.setVerticalSpacing(8)
+        main_layout = QVBoxLayout(panel)
+        main_layout.setContentsMargins(12, 10, 12, 10)
+        main_layout.setSpacing(10)
 
         control_height = 30
 
-        # Grid controls
-        self.rows_spin = QSpinBox()
-        self.rows_spin.setRange(1, 10)
-        self.rows_spin.setValue(config.DEFAULT_ROWS)
-        self.cols_spin = QSpinBox()
-        self.cols_spin.setRange(1, 10)
-        self.cols_spin.setValue(config.DEFAULT_COLUMNS)
         spin_ss = f"""
         QSpinBox {{
             background-color: {self._colors.surface};
             color: {self._colors.text};
             border: 1px solid {self._colors.border};
             border-radius: 6px;
-            padding: 1px 12px 1px 8px;\n            min-height: {control_height}px;
+            padding: 1px 10px 1px 8px;\n            min-height: {control_height}px;
         }}
         QSpinBox QLineEdit {{
             background: transparent;
@@ -158,35 +149,35 @@ class MainWindow(QMainWindow):
             width: 18px;
             margin: 1px 0px;
         }}
+        QSpinBox::up-arrow {{
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 8px solid {self._colors.focus};
+        }}
+        QSpinBox::down-arrow {{
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 8px solid {self._colors.focus};
+        }}
+        QSpinBox::up-arrow:disabled {{ border-bottom-color: {self._colors.text_muted}; }}
+        QSpinBox::down-arrow:disabled {{ border-top-color: {self._colors.text_muted}; }}
         """
-        self.rows_spin.setStyleSheet(spin_ss)
-        self.cols_spin.setStyleSheet(spin_ss)
-        self.rows_spin.setAccessibleName("Rows")
-        self.cols_spin.setAccessibleName("Columns")
-        self.rows_spin.setFixedHeight(control_height)
-        self.cols_spin.setFixedHeight(control_height)
-        self.rows_spin.setMaximumWidth(80)
-        self.cols_spin.setMaximumWidth(80)
 
-        self.template_combo = QComboBox()
-        self.template_combo.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
-        self.template_combo.setAccessibleName("Templates")
-        self.template_combo.setToolTip("Choose a grid template")
-        self.template_combo.currentTextChanged.connect(self._apply_template)
-        self.template_combo.setFixedHeight(control_height)
-        self.template_combo.setMinimumWidth(120)
         combo_ss = f"""
         QComboBox {{
             background-color: {self._colors.surface};
             color: {self._colors.text};
             border: 1px solid {self._colors.border};
             border-radius: 6px;
-            padding: 1px 24px 1px 8px;\n            min-height: {control_height}px;
+            padding: 1px 22px 1px 8px;
+            min-height: {control_height}px;
         }}
         QComboBox::drop-down {{
             width: 22px;
             border-left: 1px solid {self._colors.border};
-            margin: 1px 1px 1px 0px;
+            margin: 1px;
         }}
         QComboBox QAbstractItemView {{
             background-color: {self._colors.surface};
@@ -194,50 +185,70 @@ class MainWindow(QMainWindow):
             border: 1px solid {self._colors.border};
         }}
         """
+
+        # -- Grid controls
+        self.rows_spin = QSpinBox()
+        self.rows_spin.setRange(1, 10)
+        self.rows_spin.setValue(config.DEFAULT_ROWS)
+        self.rows_spin.setStyleSheet(spin_ss)
+        self.rows_spin.setFixedHeight(control_height)
+        self.rows_spin.setMaximumWidth(90)
+
+        self.cols_spin = QSpinBox()
+        self.cols_spin.setRange(1, 10)
+        self.cols_spin.setValue(config.DEFAULT_COLUMNS)
+        self.cols_spin.setStyleSheet(spin_ss)
+        self.cols_spin.setFixedHeight(control_height)
+        self.cols_spin.setMaximumWidth(90)
+
+        self.template_combo = QComboBox()
+        self.template_combo.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
+        self.template_combo.setAccessibleName("Templates")
+        self.template_combo.currentTextChanged.connect(self._apply_template)
+        self.template_combo.setFixedHeight(control_height)
+        self.template_combo.setMinimumWidth(140)
         self.template_combo.setStyleSheet(combo_ss)
 
         update_btn = QPushButton("Update Grid")
         update_btn.clicked.connect(self._update_grid)
-        update_btn.setAccessibleName("Update Grid")
-        update_btn.setToolTip("Apply rows/cols to rebuild the grid")
 
-        add_btn = QPushButton("Add Images…")
-        add_btn.clicked.connect(self._add_images)
-        add_btn.setToolTip("Add images to empty cells")
-        add_btn.setAccessibleName("Add Images")
+        grid_row = QGridLayout()
+        grid_row.setVerticalSpacing(6)
+        grid_row.setHorizontalSpacing(12)
+        grid_row.addWidget(QLabel("Rows:"), 0, 0)
+        grid_row.addWidget(self.rows_spin, 0, 1)
+        grid_row.addWidget(QLabel("Cols:"), 0, 2)
+        grid_row.addWidget(self.cols_spin, 0, 3)
+        grid_row.addWidget(QLabel("Template:"), 0, 4)
+        grid_row.addWidget(self.template_combo, 0, 5)
+        grid_row.addWidget(update_btn, 0, 6)
+        grid_row.setColumnStretch(5, 1)
+        grid_row.setColumnStretch(6, 0)
+        main_layout.addLayout(grid_row)
 
-        merge_btn = QPushButton("Merge")
-        merge_btn.clicked.connect(self._merge_selected_cells)
-        merge_btn.setToolTip("Merge selected cells into one region")
-        merge_btn.setAccessibleName("Merge Cells")
-
-        split_btn = QPushButton("Split")
-        split_btn.clicked.connect(self._split_selected_cells)
-        split_btn.setToolTip("Split a merged cell back into single cells")
-        split_btn.setAccessibleName("Split Cells")
-
-        clear_btn = QPushButton("Clear All")
-        clear_btn.clicked.connect(self._reset_collage)
-        clear_btn.setToolTip("Clear all images and merges")
-        clear_btn.setAccessibleName("Clear All")
-
-        save_btn = QPushButton("Save Collage")
-        save_btn.clicked.connect(self._show_save_dialog)
-        save_btn.setToolTip("Export the collage to PNG/JPEG/WEBP")
-        save_btn.setAccessibleName("Save Collage")
-
-        for btn in (update_btn, add_btn, merge_btn, split_btn, clear_btn, save_btn):
+        # -- Primary actions
+        actions = QHBoxLayout()
+        actions.setSpacing(8)
+        action_specs = [
+            ("Add Images…", self._add_images),
+            ("Merge", self._merge_selected_cells),
+            ("Split", self._split_selected_cells),
+            ("Clear All", self._reset_collage),
+            ("Save Collage", self._show_save_dialog),
+        ]
+        for text, handler in action_specs:
+            btn = QPushButton(text)
             btn.setFixedHeight(control_height)
-            btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            btn.clicked.connect(handler)
+            actions.addWidget(btn)
+        actions.addStretch(1)
+        main_layout.addLayout(actions)
 
-        # Caption controls
+        # -- Caption controls
         self.top_visible_chk = QCheckBox("Show Top")
         self.top_visible_chk.setChecked(True)
         self.bottom_visible_chk = QCheckBox("Show Bottom")
         self.bottom_visible_chk.setChecked(True)
-        for chk in (self.top_visible_chk, self.bottom_visible_chk):
-            chk.setFixedHeight(control_height)
-            chk.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         self.font_combo = QFontComboBox()
         self.font_combo.setCurrentText("Impact")
@@ -245,92 +256,71 @@ class MainWindow(QMainWindow):
         self.font_combo.setMinimumWidth(160)
         self.font_combo.setStyleSheet(combo_ss)
 
-        self.min_size_spin = QSpinBox()
-        self.min_size_spin.setRange(6, 64)
-        self.min_size_spin.setValue(12)
-        self.min_size_spin.setFixedHeight(control_height)
-        self.min_size_spin.setMaximumWidth(80)
-
-        self.max_size_spin = QSpinBox()
-        self.max_size_spin.setRange(8, 128)
-        self.max_size_spin.setValue(48)
-        self.max_size_spin.setFixedHeight(control_height)
-        self.max_size_spin.setMaximumWidth(80)
+        size_label = QLabel("Font Size:")
+        size_label.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
+        self.font_size_slider = QSlider(Qt.Horizontal)
+        self.font_size_slider.setRange(8, 120)
+        self.font_size_slider.setValue(32)
+        self.font_size_slider.setFixedHeight(18)
+        self.font_size_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(8, 120)
+        self.font_size_spin.setValue(self.font_size_slider.value())
+        self.font_size_spin.setFixedHeight(control_height)
+        self.font_size_spin.setMaximumWidth(80)
+        self.font_size_spin.setStyleSheet(spin_ss)
+        size_unit = QLabel("px")
+        size_unit.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
 
         self.stroke_width_spin = QSpinBox()
         self.stroke_width_spin.setRange(0, 16)
         self.stroke_width_spin.setValue(3)
         self.stroke_width_spin.setFixedHeight(control_height)
         self.stroke_width_spin.setMaximumWidth(80)
+        self.stroke_width_spin.setStyleSheet(spin_ss)
 
         self.stroke_btn = QPushButton("Stroke Color")
         self.fill_btn = QPushButton("Fill Color")
         for btn in (self.stroke_btn, self.fill_btn):
             btn.setFixedHeight(control_height)
-            btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
         self.uppercase_chk = QCheckBox("UPPERCASE")
         self.uppercase_chk.setChecked(True)
-        self.uppercase_chk.setFixedHeight(control_height)
-        self.uppercase_chk.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        # Layout population
-        rows_label = QLabel("Rows:")
-        cols_label = QLabel("Cols:")
-        tmpl_label = QLabel("Templates:")
-        font_label = QLabel("Font:")
-        min_label = QLabel("Min:")
-        max_label = QLabel("Max:")
-        stroke_label = QLabel("Stroke:")
-        labels = [rows_label, cols_label, tmpl_label, font_label, min_label, max_label, stroke_label]
-        for lbl in labels:
-            lbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            lbl.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
+        caption_layout = QGridLayout()
+        caption_layout.setHorizontalSpacing(10)
+        caption_layout.setVerticalSpacing(6)
+        caption_layout.addWidget(self.top_visible_chk, 0, 0)
+        caption_layout.addWidget(self.bottom_visible_chk, 0, 1)
+        caption_layout.addWidget(QLabel("Font:"), 0, 2)
+        caption_layout.addWidget(self.font_combo, 0, 3)
+        caption_layout.addWidget(size_label, 0, 4)
+        caption_layout.addWidget(self.font_size_slider, 0, 5, 1, 3)
+        caption_layout.addWidget(self.font_size_spin, 0, 8)
+        caption_layout.addWidget(size_unit, 0, 9)
+        caption_layout.addWidget(QLabel("Stroke:"), 1, 0)
+        caption_layout.addWidget(self.stroke_width_spin, 1, 1)
+        caption_layout.addWidget(self.stroke_btn, 1, 2)
+        caption_layout.addWidget(self.fill_btn, 1, 3)
+        caption_layout.addWidget(self.uppercase_chk, 1, 4)
+        caption_layout.setColumnStretch(3, 1)
+        caption_layout.setColumnStretch(5, 3)
+        caption_layout.setColumnStretch(9, 1)
+        main_layout.addLayout(caption_layout)
 
-        layout.addWidget(rows_label, 0, 0)
-        layout.addWidget(self.rows_spin, 0, 1)
-        layout.addWidget(cols_label, 0, 2)
-        layout.addWidget(self.cols_spin, 0, 3)
-        layout.addWidget(tmpl_label, 0, 4)
-        layout.addWidget(self.template_combo, 0, 5)
-        layout.addWidget(update_btn, 0, 6)
-        layout.addWidget(add_btn, 0, 7)
-        layout.addWidget(merge_btn, 0, 8)
-        layout.addWidget(split_btn, 0, 9)
-        layout.addWidget(clear_btn, 0, 10)
-        layout.addWidget(save_btn, 0, 11)
+        self.font_size_slider.valueChanged.connect(self._on_font_size_slider_changed)
+        self.font_size_spin.valueChanged.connect(self._on_font_size_spin_changed)
 
-        layout.addWidget(self.top_visible_chk, 1, 0)
-        layout.addWidget(self.bottom_visible_chk, 1, 1)
-        layout.addWidget(font_label, 1, 2)
-        layout.addWidget(self.font_combo, 1, 3)
-        layout.addWidget(min_label, 1, 4)
-        layout.addWidget(self.min_size_spin, 1, 5)
-        layout.addWidget(max_label, 1, 6)
-        layout.addWidget(self.max_size_spin, 1, 7)
-        layout.addWidget(stroke_label, 1, 8)
-        layout.addWidget(self.stroke_width_spin, 1, 9)
-        layout.addWidget(self.stroke_btn, 1, 10)
-        layout.addWidget(self.fill_btn, 1, 11)
-        layout.addWidget(self.uppercase_chk, 1, 12)
-
-        layout.setColumnStretch(5, 1)
-        layout.setColumnStretch(3, 2)
-        layout.setColumnStretch(12, 1)
-
-        # Debounce timer for live caption preview
         from PySide6.QtCore import QTimer
         self.caption_timer = QTimer(self)
         self.caption_timer.setSingleShot(True)
         self.caption_timer.setInterval(150)
         self.caption_timer.timeout.connect(self._apply_captions_now)
 
-        # Wire inputs
         self.top_visible_chk.toggled.connect(lambda _: self._apply_captions_now())
         self.bottom_visible_chk.toggled.connect(lambda _: self._apply_captions_now())
         self.font_combo.currentFontChanged.connect(lambda _: self._apply_captions_now())
-        for sp in (self.min_size_spin, self.max_size_spin, self.stroke_width_spin):
-            sp.valueChanged.connect(lambda _: self._apply_captions_now())
+        self.stroke_width_spin.valueChanged.connect(lambda _: self._apply_captions_now())
         self.uppercase_chk.toggled.connect(lambda _: self._apply_captions_now())
         self.stroke_btn.clicked.connect(lambda: self._pick_color('stroke'))
         self.fill_btn.clicked.connect(lambda: self._pick_color('fill'))
@@ -353,8 +343,7 @@ class MainWindow(QMainWindow):
         show_top = self.top_visible_chk.isChecked()
         show_bottom = self.bottom_visible_chk.isChecked()
         family = self.font_combo.currentFont().family()
-        min_sz = self.min_size_spin.value()
-        max_sz = self.max_size_spin.value()
+        font_sz = self.font_size_spin.value()
         stroke_w = self.stroke_width_spin.value()
         upper = self.uppercase_chk.isChecked()
         for cell in [c for c in self.collage.cells if getattr(c, 'selected', False)]:
@@ -363,11 +352,34 @@ class MainWindow(QMainWindow):
             if cell.bottom_caption:
                 cell.show_bottom_caption = show_bottom
             cell.caption_font_family = family
-            cell.caption_min_size = min_sz
-            cell.caption_max_size = max_sz
+            cell.caption_min_size = font_sz
+            cell.caption_max_size = font_sz
             cell.caption_stroke_width = stroke_w
             cell.caption_uppercase = upper
             cell.update()
+
+    def _on_font_size_slider_changed(self, value: int) -> None:
+        if self.font_size_spin.value() != value:
+            self.font_size_spin.blockSignals(True)
+            self.font_size_spin.setValue(value)
+            self.font_size_spin.blockSignals(False)
+        self._apply_captions_now()
+
+    def _on_font_size_spin_changed(self, value: int) -> None:
+        if self.font_size_slider.value() != value:
+            self.font_size_slider.blockSignals(True)
+            self.font_size_slider.setValue(value)
+            self.font_size_slider.blockSignals(False)
+        self._apply_captions_now()
+
+    def _set_font_size_controls(self, value: int) -> None:
+        clamped = max(self.font_size_spin.minimum(), min(self.font_size_spin.maximum(), int(value)))
+        self.font_size_spin.blockSignals(True)
+        self.font_size_spin.setValue(clamped)
+        self.font_size_spin.blockSignals(False)
+        self.font_size_slider.blockSignals(True)
+        self.font_size_slider.setValue(clamped)
+        self.font_size_slider.blockSignals(False)
 
 
     def _create_shortcuts(self):
@@ -494,13 +506,10 @@ class MainWindow(QMainWindow):
                     self.font_combo.setCurrentText(font_family)
                     self.font_combo.blockSignals(False)
 
-                self.min_size_spin.blockSignals(True)
-                self.min_size_spin.setValue(int(captions.get("min_size", self.min_size_spin.value())))
-                self.min_size_spin.blockSignals(False)
-
-                self.max_size_spin.blockSignals(True)
-                self.max_size_spin.setValue(int(captions.get("max_size", self.max_size_spin.value())))
-                self.max_size_spin.blockSignals(False)
+                font_value = captions.get("font_size")
+                if font_value is None:
+                    font_value = captions.get("min_size", captions.get("max_size", self.font_size_spin.value()))
+                self._set_font_size_controls(int(font_value))
 
                 self.stroke_width_spin.blockSignals(True)
                 self.stroke_width_spin.setValue(int(captions.get("stroke_width", self.stroke_width_spin.value())))
@@ -848,8 +857,9 @@ class MainWindow(QMainWindow):
             'show_top': self.top_visible_chk.isChecked(),
             'show_bottom': self.bottom_visible_chk.isChecked(),
             'font_family': self.font_combo.currentText(),
-            'min_size': self.min_size_spin.value(),
-            'max_size': self.max_size_spin.value(),
+            'font_size': self.font_size_spin.value(),
+            'min_size': self.font_size_spin.value(),
+            'max_size': self.font_size_spin.value(),
             'stroke_width': self.stroke_width_spin.value(),
             'uppercase': self.uppercase_chk.isChecked(),
         }

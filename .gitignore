@@ -1,12 +1,34 @@
 # Python artifacts
 __pycache__/
 *.py[cod]
-*.log
 *.pyc
+*.pyo
+*.pyd
+*.log
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Environments & tooling
+.venv/
+venv/
+env/
+.env
+.idea/
+.vscode/
+.DS_Store
+
+# Build / distribution
+build/
+dist/
+*.egg-info/
 
 # Runtime generated files
 autosave/
+logs/
 *.json
+*.tmp
+*.bak
 *.png
 *.jpg
 *.jpeg
@@ -15,9 +37,10 @@ autosave/
 *.gif
 *.ico
 
-# Scripts and local config
+# Local scripts & config
 *.sh
+*.ps1
 *.ini
 
-# Misc
+# Misc project-specific
 *.qodo
