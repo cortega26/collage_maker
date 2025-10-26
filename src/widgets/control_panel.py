@@ -143,6 +143,7 @@ class ControlPanel(QFrame):
         self._rows_spin.setFixedHeight(control_height)
         self._rows_spin.setMaximumWidth(90)
         self._rows_spin.setAccessibleName("Row Count")
+        self._rows_spin.setToolTip("Number of rows in the collage grid")
 
         self._cols_spin = QSpinBox()
         self._cols_spin.setRange(1, 10)
@@ -150,10 +151,12 @@ class ControlPanel(QFrame):
         self._cols_spin.setFixedHeight(control_height)
         self._cols_spin.setMaximumWidth(90)
         self._cols_spin.setAccessibleName("Column Count")
+        self._cols_spin.setToolTip("Number of columns in the collage grid")
 
         self._template_combo = QComboBox()
         self._template_combo.addItems(self._grid_defaults.templates)
         self._template_combo.setAccessibleName("Templates")
+        self._template_combo.setToolTip("Choose a predefined collage layout template")
         self._template_combo.setFixedHeight(control_height)
         self._template_combo.setMinimumWidth(140)
         self._template_combo.currentTextChanged.connect(self.templateSelected.emit)
@@ -161,6 +164,7 @@ class ControlPanel(QFrame):
         update_btn = QPushButton("Update Grid")
         update_btn.setFixedHeight(control_height)
         update_btn.setAccessibleName("Update Grid")
+        update_btn.setToolTip("Apply the selected grid settings to the collage")
         update_btn.clicked.connect(self.updateGridRequested.emit)
 
         grid_row = QGridLayout()
@@ -192,6 +196,7 @@ class ControlPanel(QFrame):
             btn = QPushButton(text)
             btn.setFixedHeight(control_height)
             btn.setAccessibleName(text)
+            btn.setToolTip(text)
             btn.clicked.connect(signal)
             actions.addWidget(btn)
 
@@ -204,17 +209,25 @@ class ControlPanel(QFrame):
         self._top_visible_chk = QCheckBox("Show Top")
         self._top_visible_chk.setChecked(self._caption_defaults.show_top)
         self._top_visible_chk.setAccessibleName("Toggle Top Caption")
+        self._top_visible_chk.setToolTip(
+            "Show or hide the caption at the top of the collage"
+        )
         self._top_visible_chk.setMinimumHeight(control_height)
 
         self._bottom_visible_chk = QCheckBox("Show Bottom")
         self._bottom_visible_chk.setChecked(self._caption_defaults.show_bottom)
         self._bottom_visible_chk.setAccessibleName("Toggle Bottom Caption")
+        self._bottom_visible_chk.setToolTip(
+            "Show or hide the caption at the bottom of the collage"
+        )
         self._bottom_visible_chk.setMinimumHeight(control_height)
 
         self._font_combo = QFontComboBox()
         self._font_combo.setCurrentText(self._caption_defaults.font_family)
         self._font_combo.setFixedHeight(control_height)
         self._font_combo.setMinimumWidth(160)
+        self._font_combo.setAccessibleName("Caption Font Family")
+        self._font_combo.setToolTip("Choose the font used for collage captions")
         self._font_combo.currentFontChanged.connect(
             lambda _: self._emit_caption_change()
         )
@@ -227,6 +240,10 @@ class ControlPanel(QFrame):
         self._font_size_slider.setValue(self._caption_defaults.font_size)
         self._font_size_slider.setFixedHeight(control_height)
         self._font_size_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self._font_size_slider.setAccessibleName("Caption Font Size Slider")
+        self._font_size_slider.setToolTip(
+            "Adjust the caption font size using the slider"
+        )
         self._font_size_slider.valueChanged.connect(self.fontSizeSliderChanged.emit)
 
         self._font_size_spin = QSpinBox()
@@ -234,6 +251,10 @@ class ControlPanel(QFrame):
         self._font_size_spin.setValue(self._caption_defaults.font_size)
         self._font_size_spin.setFixedHeight(control_height)
         self._font_size_spin.setMaximumWidth(80)
+        self._font_size_spin.setAccessibleName("Caption Font Size Value")
+        self._font_size_spin.setToolTip(
+            "Adjust the caption font size using numeric input"
+        )
         self._font_size_spin.valueChanged.connect(self.fontSizeSpinChanged.emit)
 
         size_unit = QLabel("px")
@@ -244,21 +265,30 @@ class ControlPanel(QFrame):
         self._stroke_width_spin.setValue(self._caption_defaults.stroke_width)
         self._stroke_width_spin.setFixedHeight(control_height)
         self._stroke_width_spin.setMaximumWidth(80)
+        self._stroke_width_spin.setAccessibleName("Caption Stroke Width")
+        self._stroke_width_spin.setToolTip(
+            "Set the outline thickness for caption text"
+        )
         self._stroke_width_spin.valueChanged.connect(
             lambda _: self._emit_caption_change()
         )
 
         self._stroke_btn = QPushButton("Stroke Color")
         self._stroke_btn.setFixedHeight(control_height)
+        self._stroke_btn.setAccessibleName("Choose Caption Stroke Color")
+        self._stroke_btn.setToolTip("Select the outline color for captions")
         self._stroke_btn.clicked.connect(lambda: self.colorPickRequested.emit("stroke"))
 
         self._fill_btn = QPushButton("Fill Color")
         self._fill_btn.setFixedHeight(control_height)
+        self._fill_btn.setAccessibleName("Choose Caption Fill Color")
+        self._fill_btn.setToolTip("Select the fill color for captions")
         self._fill_btn.clicked.connect(lambda: self.colorPickRequested.emit("fill"))
 
         self._uppercase_chk = QCheckBox("UPPERCASE")
         self._uppercase_chk.setChecked(self._caption_defaults.uppercase)
         self._uppercase_chk.setAccessibleName("Toggle Uppercase Captions")
+        self._uppercase_chk.setToolTip("Switch between uppercase and mixed-case captions")
         self._uppercase_chk.setMinimumHeight(control_height)
 
         for checkbox in (
