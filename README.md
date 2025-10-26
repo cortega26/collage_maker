@@ -85,3 +85,19 @@ Code lives under `src/`.
 ```bash
 pytest -q
 ```
+
+### Code quality checks
+The project ships with shared configuration in `pyproject.toml` for linting, formatting, typing, and security scanning. Run the
+following commands from the repository root before sending changes for review:
+
+| Tool | Command | Description |
+| --- | --- | --- |
+| Ruff | `ruff check .` | Fast linting (includes import sorting). |
+| Black | `black --check .` | Verifies formatting using the shared profile. |
+| isort | `isort --check-only .` | Ensures import order matches project conventions. |
+| mypy | `mypy .` | Static type checks with PySide6 shims ignored. |
+| bandit | `bandit -ll -r .` | Security lint focusing on high/medium severity issues. |
+| gitleaks | `gitleaks detect --no-banner` | Scans for accidentally committed secrets. |
+| pip-audit | `pip-audit` | Reports known vulnerabilities in Python dependencies. |
+
+> Note: Network access may be required for `pip-audit`.

@@ -49,7 +49,7 @@ Manual inspection of source modules (`src/main.py`, `src/widgets/collage.py`, `s
 ### Findings
 1. **UI flows untested** – Test coverage concentrates on utility classes; there are no unit or integration tests covering undo/redo, caption updates, or autosave restore paths within `MainWindow`/`CollageWidget` even though they contain critical logic.【F:tests/test_collage_layouts.py†L1-L24】【F:tests/test_image_processor.py†L1-L160】
 2. **Path manipulation in tests** – Multiple tests mutate `sys.path` manually, making suite execution order-dependent and hiding import errors in packaged environments.【F:tests/test_collage_layouts.py†L1-L8】【F:tests/performance/test_collage_layouts_perf.py†L1-L8】 _Update 2024-09: pytest configuration now injects the project root and `src/` on `PYTHONPATH`, eliminating per-test path mutations._
-3. **Missing automated static analysis hooks** – No configuration files for ruff/black/isort/mypy were found, and CI docs do not mention linting gates, risking drift from style/security baselines.【F:README.md†L1-L120】
+3. **Missing automated static analysis hooks** – No configuration files for ruff/black/isort/mypy were found, and CI docs do not mention linting gates, risking drift from style/security baselines.【F:README.md†L1-L120】 _Update 2024-10: Repository now includes shared `pyproject.toml` tooling defaults and README instructions covering lint/type/security commands._
 
 ### Recommendations
 - Add headless unit tests using Qt's `QSignalSpy` or by isolating logic into pure-Python classes; cover undo stack, caption toggles, and autosave serialization/deserialization.
