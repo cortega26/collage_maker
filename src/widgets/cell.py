@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QMenu
 from PySide6.QtCore import QBuffer, QByteArray
 
 from .. import config
-from ..cache import image_cache
+from ..cache import get_cache
 from ..optimizer import ImageOptimizer
 from utils.image_operations import apply_filter as pil_apply_filter, adjust_brightness as pil_brightness, adjust_contrast as pil_contrast
 from PIL import Image
@@ -501,7 +501,7 @@ class CollageCell(QWidget):
         try:
             # Cache check
             cache_key = self._cache_key(file_path)
-            cached, meta = image_cache.get(cache_key)
+            cached, meta = get_cache().get(cache_key)
             if cached:
                 if isinstance(cached, tuple) and len(cached) == 2:
                     display_pix, original_pix = cached
@@ -541,7 +541,7 @@ class CollageCell(QWidget):
 
             # Cache full-quality
             full_meta = ImageOptimizer.process_metadata(file_path)
-            image_cache.put(cache_key, (display_pix, original_pix), full_meta)
+            get_cache().put(cache_key, (display_pix, original_pix), full_meta)
 
         except FileNotFoundError as e:
             logging.error("Cell %d: file not found: %s", self.cell_id, file_path)

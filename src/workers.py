@@ -10,7 +10,7 @@ from PySide6.QtCore import QRunnable, QThreadPool, QObject, Signal, QSize
 from PySide6.QtWidgets import QProgressDialog, QMessageBox
 from PySide6.QtGui import QImageReader, QPixmap
 
-from .cache import image_cache
+from .cache import get_cache
 from .optimizer import ImageOptimizer
 
 
@@ -114,7 +114,7 @@ class BatchProcessor:
                     logging.error("Batch load failed: %s", reader.errorString())
                     continue
                 pix = QPixmap.fromImage(img)
-                image_cache.put(path, pix, ImageOptimizer.process_metadata(path))
+                get_cache().put(path, pix, ImageOptimizer.process_metadata(path))
                 progress = int((idx + 1) / len(path_list) * 100)
                 yield progress
 
