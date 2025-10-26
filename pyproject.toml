@@ -1,0 +1,56 @@
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+extend-exclude = "(build/|dist/|venv/|\\.venv/)"
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["src", "tests", "utils"]
+combine_as_imports = true
+include_trailing_comma = true
+multi_line_output = 3
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+src = ["src", "tests", "utils"]
+extend-exclude = ["build", "dist", "venv", "\\.venv"]
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle
+  "F",  # pyflakes
+  "I",  # isort
+  "B",  # flake8-bugbear
+  "UP", # pyupgrade
+  "N",  # pep8-naming
+  "S",  # bandit security checks
+  "W",  # pycodestyle warnings
+]
+ignore = [
+  "E203",  # allow slices to align with Black
+  "E501",  # defer to Black for line length
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+ignore_missing_imports = true
+show_error_codes = true
+strict_optional = true
+allow_redefinition = true
+plugins = []
+
+[tool.bandit]
+skips = ["B101"]
+exclude_dirs = ["tests"]
+
+[tool.pip-audit]
+require-hashes = false
+
+[tool.gitleaks]
+enable = true
