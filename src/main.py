@@ -2,42 +2,62 @@
 """
 Entry point and main application window for Collage Maker.
 """
-import sys
-import os
-import logging
-from logging.handlers import RotatingFileHandler
 import copy
+import logging
+import os
+import sys
+from dataclasses import dataclass
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QGridLayout, QLabel, QPushButton, QSpinBox, QFileDialog, QMessageBox,
-    QDialog, QSlider, QDialogButtonBox, QCheckBox, QComboBox,
-    QFrame, QSizePolicy, QFontComboBox, QColorDialog
+from PySide6.QtCore import QPoint, QStandardPaths, Qt, QTimer
+from PySide6.QtGui import (
+    QImage,
+    QImageReader,
+    QKeySequence,
+    QPainter,
+    QPixmap,
+    QShortcut,
 )
-from PySide6.QtCore import Qt, QPoint, QStandardPaths
-from PySide6.QtGui import QPainter, QPixmap, QKeySequence, QShortcut, QImage, QImageReader
-from dataclasses import dataclass
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QColorDialog,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QFrame,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
 
-from pathlib import Path
 try:
     # Preferred package-relative imports
     from . import config, style_tokens
-    from .widgets.collage import CollageWidget
     from .managers.autosave import AutosaveManager
     from .managers.performance import PerformanceMonitor
     from .managers.recovery import ErrorRecoveryManager
     from .optimizer import ImageOptimizer
+    from .widgets.collage import CollageWidget
+    from .widgets.control_panel import CaptionDefaults, ControlPanel, GridDefaults
 except ImportError:
     # Fallback for running `python src/main.py` directly
     import sys as _sys
+
     _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from src import config, style_tokens
-    from src.widgets.collage import CollageWidget
     from src.managers.autosave import AutosaveManager
     from src.managers.performance import PerformanceMonitor
     from src.managers.recovery import ErrorRecoveryManager
     from src.optimizer import ImageOptimizer
+    from src.widgets.collage import CollageWidget
+    from src.widgets.control_panel import CaptionDefaults, ControlPanel, GridDefaults
 
 LOGGER_NAME = "collage_maker"
 
@@ -106,13 +126,29 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(8, 6, 8, 6)
         main_layout.setSpacing(8)
 
-        # Determine theme colors for per-widget overrides
-        self._theme = os.environ.get('COLLAGE_THEME', 'light')
-        self._colors = style_tokens.get_colors(theme=self._theme)
-
         # Controls and collage
-        control_panel = self._create_control_panel()
-        main_layout.addWidget(control_panel)
+        self.control_panel = ControlPanel(
+            grid_defaults=GridDefaults(
+                rows=config.DEFAULT_ROWS,
+                columns=config.DEFAULT_COLUMNS,
+                templates=("2x2", "3x3", "2x3", "3x2", "4x4"),
+            ),
+            caption_defaults=CaptionDefaults(
+                font_family="Impact",
+                font_size=32,
+                stroke_width=3,
+                uppercase=True,
+                show_top=True,
+                show_bottom=True,
+            ),
+            parent=self,
+        )
+        main_layout.addWidget(self.control_panel)
+        self._bind_control_panel()
+        self.caption_timer = QTimer(self)
+        self.caption_timer.setSingleShot(True)
+        self.caption_timer.setInterval(150)
+        self.caption_timer.timeout.connect(self._apply_captions_now)
         # Separator under the toolbar (thin)
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
@@ -122,7 +158,7 @@ class MainWindow(QMainWindow):
         self.collage = CollageWidget(
             rows=self.rows_spin.value(),
             columns=self.cols_spin.value(),
-            cell_size=config.DEFAULT_CELL_SIZE
+            cell_size=config.DEFAULT_CELL_SIZE,
         )
         self.collage.setAccessibleName("Collage Grid")
         # Wrap in a 'card' frame that uses design tokens
@@ -137,9 +173,7 @@ class MainWindow(QMainWindow):
         self.autosave = AutosaveManager(self, self.get_collage_state)
         self.performance = PerformanceMonitor(self)
         self.error_recovery = ErrorRecoveryManager(
-            self,
-            save_state=self.get_collage_state,
-            reset_callback=self._reset_collage
+            self, save_state=self.get_collage_state, reset_callback=self._reset_collage
         )
 
         # Shortcuts
@@ -150,225 +184,46 @@ class MainWindow(QMainWindow):
 
         logging.info("MainWindow initialized.")
 
-    def _create_control_panel(self) -> QWidget:
-        panel = QFrame()
-        panel.setObjectName("controlPanel")
-        panel.setProperty("compact", "true")
-        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    def _bind_control_panel(self) -> None:
+        panel = self.control_panel
 
-        main_layout = QVBoxLayout(panel)
-        main_layout.setContentsMargins(12, 10, 12, 10)
-        main_layout.setSpacing(10)
+        self.rows_spin = panel.rows_spin
+        self.cols_spin = panel.cols_spin
+        self.template_combo = panel.template_combo
+        self.top_visible_chk = panel.top_checkbox
+        self.bottom_visible_chk = panel.bottom_checkbox
+        self.font_combo = panel.font_combo
+        self.font_size_slider = panel.font_size_slider
+        self.font_size_spin = panel.font_size_spin
+        self.stroke_width_spin = panel.stroke_width_spin
+        self.stroke_btn = panel.stroke_button
+        self.fill_btn = panel.fill_button
+        self.uppercase_chk = panel.uppercase_checkbox
 
-        control_height = 30
+        panel.addImagesRequested.connect(self._add_images)
+        panel.mergeRequested.connect(self._merge_selected_cells)
+        panel.splitRequested.connect(self._split_selected_cells)
+        panel.clearRequested.connect(self._reset_collage)
+        panel.saveRequested.connect(self._show_save_dialog)
+        panel.updateGridRequested.connect(self._update_grid)
+        panel.templateSelected.connect(self._apply_template)
+        panel.captionSettingsChanged.connect(self._schedule_caption_apply)
+        panel.fontSizeSliderChanged.connect(self._on_font_size_slider_changed)
+        panel.fontSizeSpinChanged.connect(self._on_font_size_spin_changed)
+        panel.colorPickRequested.connect(self._pick_color)
 
-        spin_ss = f"""
-        QSpinBox {{
-            background-color: {self._colors.surface};
-            color: {self._colors.text};
-            border: 1px solid {self._colors.border};
-            border-radius: 6px;
-            padding: 1px 10px 1px 8px;\n            min-height: {control_height}px;
-        }}
-        QSpinBox QLineEdit {{
-            background: transparent;
-            color: {self._colors.text};
-            selection-background-color: {self._colors.focus};
-            selection-color: #ffffff;
-            padding: 0px;
-        }}
-        QSpinBox:disabled {{ color: {self._colors.text_muted}; }}
-        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{
-            background: {self._colors.surface};
-            border-left: 1px solid {self._colors.border};
-            width: 18px;
-            margin: 1px 0px;
-        }}
-        QSpinBox::up-arrow {{
-            width: 0; height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-bottom: 8px solid {self._colors.focus};
-        }}
-        QSpinBox::down-arrow {{
-            width: 0; height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 8px solid {self._colors.focus};
-        }}
-        QSpinBox::up-arrow:disabled {{ border-bottom-color: {self._colors.text_muted}; }}
-        QSpinBox::down-arrow:disabled {{ border-top-color: {self._colors.text_muted}; }}
-        """
-
-        combo_ss = f"""
-        QComboBox {{
-            background-color: {self._colors.surface};
-            color: {self._colors.text};
-            border: 1px solid {self._colors.border};
-            border-radius: 6px;
-            padding: 1px 22px 1px 8px;
-            min-height: {control_height}px;
-        }}
-        QComboBox::drop-down {{
-            width: 22px;
-            border-left: 1px solid {self._colors.border};
-            margin: 1px;
-        }}
-        QComboBox QAbstractItemView {{
-            background-color: {self._colors.surface};
-            color: {self._colors.text};
-            border: 1px solid {self._colors.border};
-        }}
-        """
-
-        # -- Grid controls
-        self.rows_spin = QSpinBox()
-        self.rows_spin.setRange(1, 10)
-        self.rows_spin.setValue(config.DEFAULT_ROWS)
-        self.rows_spin.setStyleSheet(spin_ss)
-        self.rows_spin.setFixedHeight(control_height)
-        self.rows_spin.setMaximumWidth(90)
-
-        self.cols_spin = QSpinBox()
-        self.cols_spin.setRange(1, 10)
-        self.cols_spin.setValue(config.DEFAULT_COLUMNS)
-        self.cols_spin.setStyleSheet(spin_ss)
-        self.cols_spin.setFixedHeight(control_height)
-        self.cols_spin.setMaximumWidth(90)
-
-        self.template_combo = QComboBox()
-        self.template_combo.addItems(["2x2", "3x3", "2x3", "3x2", "4x4"])
-        self.template_combo.setAccessibleName("Templates")
-        self.template_combo.currentTextChanged.connect(self._apply_template)
-        self.template_combo.setFixedHeight(control_height)
-        self.template_combo.setMinimumWidth(140)
-        self.template_combo.setStyleSheet(combo_ss)
-
-        update_btn = QPushButton("Update Grid")
-        update_btn.clicked.connect(self._update_grid)
-
-        grid_row = QGridLayout()
-        grid_row.setVerticalSpacing(6)
-        grid_row.setHorizontalSpacing(12)
-        grid_row.addWidget(QLabel("Rows:"), 0, 0)
-        grid_row.addWidget(self.rows_spin, 0, 1)
-        grid_row.addWidget(QLabel("Cols:"), 0, 2)
-        grid_row.addWidget(self.cols_spin, 0, 3)
-        grid_row.addWidget(QLabel("Template:"), 0, 4)
-        grid_row.addWidget(self.template_combo, 0, 5)
-        grid_row.addWidget(update_btn, 0, 6)
-        grid_row.setColumnStretch(5, 1)
-        grid_row.setColumnStretch(6, 0)
-        main_layout.addLayout(grid_row)
-
-        # -- Primary actions
-        actions = QHBoxLayout()
-        actions.setSpacing(8)
-        action_specs = [
-            ("Add Images…", self._add_images),
-            ("Merge", self._merge_selected_cells),
-            ("Split", self._split_selected_cells),
-            ("Clear All", self._reset_collage),
-            ("Save Collage", self._show_save_dialog),
-        ]
-        for text, handler in action_specs:
-            btn = QPushButton(text)
-            btn.setFixedHeight(control_height)
-            btn.clicked.connect(handler)
-            actions.addWidget(btn)
-        actions.addStretch(1)
-        main_layout.addLayout(actions)
-
-        # -- Caption controls
-        self.top_visible_chk = QCheckBox("Show Top")
-        self.top_visible_chk.setChecked(True)
-        self.bottom_visible_chk = QCheckBox("Show Bottom")
-        self.bottom_visible_chk.setChecked(True)
-
-        self.font_combo = QFontComboBox()
-        self.font_combo.setCurrentText("Impact")
-        self.font_combo.setFixedHeight(control_height)
-        self.font_combo.setMinimumWidth(160)
-        self.font_combo.setStyleSheet(combo_ss)
-
-        size_label = QLabel("Font Size:")
-        size_label.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
-        self.font_size_slider = QSlider(Qt.Horizontal)
-        self.font_size_slider.setRange(8, 120)
-        self.font_size_slider.setValue(32)
-        self.font_size_slider.setFixedHeight(18)
-        self.font_size_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.font_size_spin = QSpinBox()
-        self.font_size_spin.setRange(8, 120)
-        self.font_size_spin.setValue(self.font_size_slider.value())
-        self.font_size_spin.setFixedHeight(control_height)
-        self.font_size_spin.setMaximumWidth(80)
-        self.font_size_spin.setStyleSheet(spin_ss)
-        size_unit = QLabel("px")
-        size_unit.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-
-        self.stroke_width_spin = QSpinBox()
-        self.stroke_width_spin.setRange(0, 16)
-        self.stroke_width_spin.setValue(3)
-        self.stroke_width_spin.setFixedHeight(control_height)
-        self.stroke_width_spin.setMaximumWidth(80)
-        self.stroke_width_spin.setStyleSheet(spin_ss)
-
-        self.stroke_btn = QPushButton("Stroke Color")
-        self.fill_btn = QPushButton("Fill Color")
-        for btn in (self.stroke_btn, self.fill_btn):
-            btn.setFixedHeight(control_height)
-
-        self.uppercase_chk = QCheckBox("UPPERCASE")
-        self.uppercase_chk.setChecked(True)
-
-        caption_layout = QGridLayout()
-        caption_layout.setHorizontalSpacing(10)
-        caption_layout.setVerticalSpacing(6)
-        caption_layout.addWidget(self.top_visible_chk, 0, 0)
-        caption_layout.addWidget(self.bottom_visible_chk, 0, 1)
-        caption_layout.addWidget(QLabel("Font:"), 0, 2)
-        caption_layout.addWidget(self.font_combo, 0, 3)
-        caption_layout.addWidget(size_label, 0, 4)
-        caption_layout.addWidget(self.font_size_slider, 0, 5, 1, 3)
-        caption_layout.addWidget(self.font_size_spin, 0, 8)
-        caption_layout.addWidget(size_unit, 0, 9)
-        caption_layout.addWidget(QLabel("Stroke:"), 1, 0)
-        caption_layout.addWidget(self.stroke_width_spin, 1, 1)
-        caption_layout.addWidget(self.stroke_btn, 1, 2)
-        caption_layout.addWidget(self.fill_btn, 1, 3)
-        caption_layout.addWidget(self.uppercase_chk, 1, 4)
-        caption_layout.setColumnStretch(3, 1)
-        caption_layout.setColumnStretch(5, 3)
-        caption_layout.setColumnStretch(9, 1)
-        main_layout.addLayout(caption_layout)
-
-        self.font_size_slider.valueChanged.connect(self._on_font_size_slider_changed)
-        self.font_size_spin.valueChanged.connect(self._on_font_size_spin_changed)
-
-        from PySide6.QtCore import QTimer
-        self.caption_timer = QTimer(self)
-        self.caption_timer.setSingleShot(True)
-        self.caption_timer.setInterval(150)
-        self.caption_timer.timeout.connect(self._apply_captions_now)
-
-        self.top_visible_chk.toggled.connect(lambda _: self._apply_captions_now())
-        self.bottom_visible_chk.toggled.connect(lambda _: self._apply_captions_now())
-        self.font_combo.currentFontChanged.connect(lambda _: self._apply_captions_now())
-        self.stroke_width_spin.valueChanged.connect(lambda _: self._apply_captions_now())
-        self.uppercase_chk.toggled.connect(lambda _: self._apply_captions_now())
-        self.stroke_btn.clicked.connect(lambda: self._pick_color('stroke'))
-        self.fill_btn.clicked.connect(lambda: self._pick_color('fill'))
-
-        return panel
+    def _schedule_caption_apply(self) -> None:
+        if self.caption_timer.isActive():
+            self.caption_timer.stop()
+        self.caption_timer.start()
 
     def _pick_color(self, which: str):
         col = QColorDialog.getColor(parent=self)
         if not col.isValid():
             return
         # Apply to selection immediately
-        for cell in [c for c in self.collage.cells if getattr(c, 'selected', False)]:
-            if which == 'stroke':
+        for cell in [c for c in self.collage.cells if getattr(c, "selected", False)]:
+            if which == "stroke":
                 cell.caption_stroke_color = col
             else:
                 cell.caption_fill_color = col
@@ -381,7 +236,7 @@ class MainWindow(QMainWindow):
         font_sz = self.font_size_spin.value()
         stroke_w = self.stroke_width_spin.value()
         upper = self.uppercase_chk.isChecked()
-        for cell in [c for c in self.collage.cells if getattr(c, 'selected', False)]:
+        for cell in [c for c in self.collage.cells if getattr(c, "selected", False)]:
             if cell.top_caption:
                 cell.show_top_caption = show_top
             if cell.bottom_caption:
@@ -398,17 +253,20 @@ class MainWindow(QMainWindow):
             self.font_size_spin.blockSignals(True)
             self.font_size_spin.setValue(value)
             self.font_size_spin.blockSignals(False)
-        self._apply_captions_now()
+        self._schedule_caption_apply()
 
     def _on_font_size_spin_changed(self, value: int) -> None:
         if self.font_size_slider.value() != value:
             self.font_size_slider.blockSignals(True)
             self.font_size_slider.setValue(value)
             self.font_size_slider.blockSignals(False)
-        self._apply_captions_now()
+        self._schedule_caption_apply()
 
     def _set_font_size_controls(self, value: int) -> None:
-        clamped = max(self.font_size_spin.minimum(), min(self.font_size_spin.maximum(), int(value)))
+        clamped = max(
+            self.font_size_spin.minimum(),
+            min(self.font_size_spin.maximum(), int(value)),
+        )
         self.font_size_spin.blockSignals(True)
         self.font_size_spin.setValue(clamped)
         self.font_size_spin.blockSignals(False)
@@ -416,21 +274,25 @@ class MainWindow(QMainWindow):
         self.font_size_slider.setValue(clamped)
         self.font_size_slider.blockSignals(False)
 
-
     def _create_shortcuts(self):
-        QShortcut(QKeySequence(config.SAVE_SHORTCUT),
-                  self, activated=self._show_save_dialog)
-        QShortcut(QKeySequence(config.SAVE_ORIGINAL_SHORTCUT), self,
-                  activated=lambda: self._show_save_dialog(default_original=True))
+        QShortcut(
+            QKeySequence(config.SAVE_SHORTCUT), self, activated=self._show_save_dialog
+        )
+        QShortcut(
+            QKeySequence(config.SAVE_ORIGINAL_SHORTCUT),
+            self,
+            activated=lambda: self._show_save_dialog(default_original=True),
+        )
         QShortcut(QKeySequence.Undo, self, activated=self._undo)
         QShortcut(QKeySequence.Redo, self, activated=self._redo)
         QShortcut(QKeySequence.SelectAll, self, activated=self._select_all)
         QShortcut(QKeySequence.Delete, self, activated=self._delete_selected)
         QShortcut(QKeySequence("Ctrl+O"), self, activated=self._add_images)
-        QShortcut(QKeySequence("Ctrl+Shift+C"), self,
-                  activated=self._reset_collage)
+        QShortcut(QKeySequence("Ctrl+Shift+C"), self, activated=self._reset_collage)
         QShortcut(QKeySequence("Ctrl+M"), self, activated=self._merge_selected_cells)
-        QShortcut(QKeySequence("Ctrl+Shift+M"), self, activated=self._split_selected_cells)
+        QShortcut(
+            QKeySequence("Ctrl+Shift+M"), self, activated=self._split_selected_cells
+        )
 
     # --- Undo / Redo helpers ---
     def _init_history_tracking(self) -> None:
@@ -521,7 +383,10 @@ class MainWindow(QMainWindow):
                 self.cols_spin.blockSignals(False)
 
                 if template and self.template_combo is not None:
-                    if template in [self.template_combo.itemText(i) for i in range(self.template_combo.count())]:
+                    if template in [
+                        self.template_combo.itemText(i)
+                        for i in range(self.template_combo.count())
+                    ]:
                         self.template_combo.blockSignals(True)
                         self.template_combo.setCurrentText(template)
                         self.template_combo.blockSignals(False)
@@ -532,7 +397,9 @@ class MainWindow(QMainWindow):
                 self.top_visible_chk.blockSignals(False)
 
                 self.bottom_visible_chk.blockSignals(True)
-                self.bottom_visible_chk.setChecked(bool(captions.get("show_bottom", True)))
+                self.bottom_visible_chk.setChecked(
+                    bool(captions.get("show_bottom", True))
+                )
                 self.bottom_visible_chk.blockSignals(False)
 
                 font_family = captions.get("font_family")
@@ -543,15 +410,22 @@ class MainWindow(QMainWindow):
 
                 font_value = captions.get("font_size")
                 if font_value is None:
-                    font_value = captions.get("min_size", captions.get("max_size", self.font_size_spin.value()))
+                    font_value = captions.get(
+                        "min_size",
+                        captions.get("max_size", self.font_size_spin.value()),
+                    )
                 self._set_font_size_controls(int(font_value))
 
                 self.stroke_width_spin.blockSignals(True)
-                self.stroke_width_spin.setValue(int(captions.get("stroke_width", self.stroke_width_spin.value())))
+                self.stroke_width_spin.setValue(
+                    int(captions.get("stroke_width", self.stroke_width_spin.value()))
+                )
                 self.stroke_width_spin.blockSignals(False)
 
                 self.uppercase_chk.blockSignals(True)
-                self.uppercase_chk.setChecked(bool(captions.get("uppercase", self.uppercase_chk.isChecked())))
+                self.uppercase_chk.setChecked(
+                    bool(captions.get("uppercase", self.uppercase_chk.isChecked()))
+                )
                 self.uppercase_chk.blockSignals(False)
         finally:
             self._is_restoring_state = False
@@ -585,8 +459,10 @@ class MainWindow(QMainWindow):
 
     def _delete_selected(self):
         targets = [
-            cell for cell in self.collage.cells
-            if cell.selected and (
+            cell
+            for cell in self.collage.cells
+            if cell.selected
+            and (
                 getattr(cell, "pixmap", None)
                 or getattr(cell, "caption", "")
                 or getattr(cell, "top_caption", "")
@@ -607,7 +483,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "Merge Cells",
-                "Select two or more adjacent cells to merge into a single region."
+                "Select two or more adjacent cells to merge into a single region.",
             )
             return
         captured = self._capture_for_undo()
@@ -615,9 +491,7 @@ class MainWindow(QMainWindow):
             if captured:
                 self._discard_latest_snapshot()
             QMessageBox.information(
-                self,
-                "Merge Cells",
-                "Could not merge the selected cells."
+                self, "Merge Cells", "Could not merge the selected cells."
             )
             return
         target = self.collage.get_cell_at(rect[0], rect[1])
@@ -641,7 +515,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "Split Cells",
-                "Select a merged cell to split back into individual cells."
+                "Select a merged cell to split back into individual cells.",
             )
             return
         captured = self._capture_for_undo()
@@ -649,9 +523,7 @@ class MainWindow(QMainWindow):
             if captured:
                 self._discard_latest_snapshot()
             QMessageBox.information(
-                self,
-                "Split Cells",
-                "Could not split the selected merged cell."
+                self, "Split Cells", "Could not split the selected merged cell."
             )
             return
         if captured:
@@ -663,13 +535,13 @@ class MainWindow(QMainWindow):
             return
         self._export_collage(opts)
 
-    def _export_collage(self, opts: 'MainWindow.SaveOptions'):
+    def _export_collage(self, opts: "MainWindow.SaveOptions"):
         try:
             path = self._select_save_path(opts.format)
             if not path:
                 return
             primary = self._render_scaled_pixmap(opts.resolution)
-            if opts.format in ('jpeg', 'jpg'):
+            if opts.format in ("jpeg", "jpg"):
                 primary = self._convert_for_jpeg(primary)
             # Add basic metadata for accessibility/compatibility
             img = primary.toImage()
@@ -678,8 +550,7 @@ class MainWindow(QMainWindow):
             logging.info("Saved collage to %s", path)
 
             if opts.save_original:
-                orig_path = os.path.splitext(
-                    path)[0] + '_original.' + opts.format
+                orig_path = os.path.splitext(path)[0] + "_original." + opts.format
                 self._save_original(orig_path, opts.format, opts.quality)
 
             QMessageBox.information(self, "Saved", f"Saved: {path}")
@@ -694,14 +565,17 @@ class MainWindow(QMainWindow):
         resolution: int
         save_original: bool
 
-    def _prompt_save_options(self, default_original: bool = False) -> 'MainWindow.SaveOptions | None':
+    def _prompt_save_options(
+        self, default_original: bool = False
+    ) -> "MainWindow.SaveOptions | None":
         dialog = QDialog(self)
         dialog.setWindowTitle("Save Collage")
         v = QVBoxLayout(dialog)
 
         preview = QLabel()
         pix = self.collage.grab().scaled(
-            300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
         preview.setPixmap(pix)
         v.addWidget(preview, alignment=Qt.AlignCenter)
 
@@ -724,8 +598,7 @@ class MainWindow(QMainWindow):
         res_box.addItems([f"{m}x" for m in config.RESOLUTION_MULTIPLIERS])
         v.addWidget(res_box)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Save |
-                                QDialogButtonBox.Cancel)
+        btns = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         btns.accepted.connect(dialog.accept)
         btns.rejected.connect(dialog.reject)
         v.addWidget(btns)
@@ -735,16 +608,17 @@ class MainWindow(QMainWindow):
         return MainWindow.SaveOptions(
             format=fmt_box.currentText().lower(),
             quality=quality.value(),
-            resolution=int(res_box.currentText().rstrip('x')),
+            resolution=int(res_box.currentText().rstrip("x")),
             save_original=original.isChecked(),
         )
 
-    def _select_save_path(self, fmt: str) -> 'str | None':
+    def _select_save_path(self, fmt: str) -> "str | None":
         options = QFileDialog.Options()
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             options |= QFileDialog.DontUseNativeDialog
-        pictures_dir = QStandardPaths.writableLocation(
-            QStandardPaths.PicturesLocation) or ''
+        pictures_dir = (
+            QStandardPaths.writableLocation(QStandardPaths.PicturesLocation) or ""
+        )
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Save Collage",
@@ -763,7 +637,7 @@ class MainWindow(QMainWindow):
         - Clamps the largest side to ``config.MAX_EXPORT_DIMENSION`` to avoid excessive memory usage.
         """
         base = self.collage.size()
-        dpr = self.devicePixelRatioF() if hasattr(self, 'devicePixelRatioF') else 1.0
+        dpr = self.devicePixelRatioF() if hasattr(self, "devicePixelRatioF") else 1.0
         scale = max(1.0, float(resolution) * float(dpr))
         out_w = int(base.width() * scale)
         out_h = int(base.height() * scale)
@@ -778,8 +652,11 @@ class MainWindow(QMainWindow):
         img = QImage(out_w, out_h, QImage.Format_ARGB32)
         img.fill(Qt.transparent)
         p = QPainter(img)
-        p.setRenderHints(QPainter.Antialiasing |
-                         QPainter.SmoothPixmapTransform | QPainter.TextAntialiasing)
+        p.setRenderHints(
+            QPainter.Antialiasing
+            | QPainter.SmoothPixmapTransform
+            | QPainter.TextAntialiasing
+        )
         # Render from logical coordinates scaled to pixel buffer size
         p.scale(out_w / base.width(), out_h / base.height())
         self.collage.render(p)
@@ -790,16 +667,20 @@ class MainWindow(QMainWindow):
         # Select multiple images and fill empty cells in reading order
         exts = [f"*.{e}" for e in config.SUPPORTED_IMAGE_FORMATS]
         pattern = " ".join(exts)
-        files, _ = QFileDialog.getOpenFileNames(self, "Add Images", QStandardPaths.writableLocation(
-            QStandardPaths.PicturesLocation) or "", f"Images ({pattern})")
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Add Images",
+            QStandardPaths.writableLocation(QStandardPaths.PicturesLocation) or "",
+            f"Images ({pattern})",
+        )
         if not files:
             return
         # Collect empty cells
-        empty_cells = [
-            c for c in self.collage.cells if not getattr(c, 'pixmap', None)]
+        empty_cells = [c for c in self.collage.cells if not getattr(c, "pixmap", None)]
         if not empty_cells:
             QMessageBox.information(
-                self, "No Empty Cells", "All cells already contain images.")
+                self, "No Empty Cells", "All cells already contain images."
+            )
             return
         captured = self._capture_for_undo()
         assigned = 0
@@ -825,7 +706,10 @@ class MainWindow(QMainWindow):
             self._update_history_baseline()
         if assigned < len(files):
             QMessageBox.information(
-                self, "Some files skipped", f"Added {assigned} images; others could not be loaded or no empty cells left.")
+                self,
+                "Some files skipped",
+                f"Added {assigned} images; others could not be loaded or no empty cells left.",
+            )
 
     def _convert_for_jpeg(self, pix: QPixmap) -> QPixmap:
         img = pix.toImage()
@@ -839,8 +723,8 @@ class MainWindow(QMainWindow):
         total_w = 0
         total_h = 0
         # widths and heights by column/row
-        col_widths = [0]*self.collage.columns
-        row_heights = [0]*self.collage.rows
+        col_widths = [0] * self.collage.columns
+        row_heights = [0] * self.collage.rows
         for cell in self.collage.cells:
             pos = self.collage.get_cell_position(cell)
             if cell.original_pixmap and pos:
@@ -854,7 +738,8 @@ class MainWindow(QMainWindow):
 
         if total_w <= 0 or total_h <= 0:
             QMessageBox.information(
-                self, "No Original Images", "There are no original images to export.")
+                self, "No Original Images", "There are no original images to export."
+            )
             return
 
         canvas = QPixmap(total_w, total_h)
@@ -868,13 +753,12 @@ class MainWindow(QMainWindow):
             for c in range(self.collage.columns):
                 cell = self.collage.get_cell_at(r, c)
                 if cell and cell.original_pixmap:
-                    painter.drawPixmap(
-                        QPoint(x_offset, y_offset), cell.original_pixmap)
+                    painter.drawPixmap(QPoint(x_offset, y_offset), cell.original_pixmap)
                 x_offset += col_widths[c]
             y_offset += row_heights[r]
         painter.end()
 
-        if fmt in ['jpeg', 'jpg']:
+        if fmt in ["jpeg", "jpg"]:
             canvas = self._convert_for_jpeg(canvas)
         if not canvas.save(path, fmt, quality):
             raise IOError(f"Failed to save original collage to {path}")
@@ -884,34 +768,38 @@ class MainWindow(QMainWindow):
         """Return a richer snapshot for autosave and recovery."""
         collage_state = self.collage.serialize_for_autosave()
         controls_state = {
-            'rows': self.rows_spin.value(),
-            'columns': self.cols_spin.value(),
-            'template': self.template_combo.currentText() if hasattr(self, 'template_combo') else None,
+            "rows": self.rows_spin.value(),
+            "columns": self.cols_spin.value(),
+            "template": (
+                self.template_combo.currentText()
+                if hasattr(self, "template_combo")
+                else None
+            ),
         }
         captions_state = {
-            'show_top': self.top_visible_chk.isChecked(),
-            'show_bottom': self.bottom_visible_chk.isChecked(),
-            'font_family': self.font_combo.currentText(),
-            'font_size': self.font_size_spin.value(),
-            'min_size': self.font_size_spin.value(),
-            'max_size': self.font_size_spin.value(),
-            'stroke_width': self.stroke_width_spin.value(),
-            'uppercase': self.uppercase_chk.isChecked(),
+            "show_top": self.top_visible_chk.isChecked(),
+            "show_bottom": self.bottom_visible_chk.isChecked(),
+            "font_family": self.font_combo.currentText(),
+            "font_size": self.font_size_spin.value(),
+            "min_size": self.font_size_spin.value(),
+            "max_size": self.font_size_spin.value(),
+            "stroke_width": self.stroke_width_spin.value(),
+            "uppercase": self.uppercase_chk.isChecked(),
         }
         return {
-            'collage': collage_state,
-            'controls': controls_state,
-            'captions': captions_state,
+            "collage": collage_state,
+            "controls": controls_state,
+            "captions": captions_state,
         }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    qss = Path(__file__).resolve().parents[1] / 'ui' / 'style.qss'
+    qss = Path(__file__).resolve().parents[1] / "ui" / "style.qss"
     if qss.exists():
-        app.setStyleSheet(qss.read_text(encoding='utf-8'))
+        app.setStyleSheet(qss.read_text(encoding="utf-8"))
     # Apply design tokens on top of static QSS (allow env override for theme)
-    theme = os.environ.get('COLLAGE_THEME', 'light')
+    theme = os.environ.get("COLLAGE_THEME", "light")
     style_tokens.apply_tokens(app, theme=theme)
     window = MainWindow()
     window.show()
