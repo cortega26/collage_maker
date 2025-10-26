@@ -1,3 +1,49 @@
+# Collage Maker Quality Audit — 2025-03-18
+
+## Scope & Methodology
+- **Requested focus**: holistic review of code quality/maintainability, architecture, performance, testing, and UX/UI + accessibility.
+- **Artifacts inspected**: primary PySide6 application (`src/main.py`, `src/widgets/*`, `src/managers/*`), imaging utilities (`utils/`), UI shell components (`ui/`), and automated tests (`tests/`).
+- **Tooling**: static inspection, repository history review, and spot execution of lightweight AST helpers (no binaries added).
+
+## Findings
+
+### Code Quality & Maintainability
+1. **Overgrown control-panel factory (High)** – `MainWindow._create_control_panel` packs 221 lines of widget construction, inline QSS, signal wiring, and state mutation into a single method, making it hard to test or reason about (`src/main.py` lines 118-338). Breaking it into focused builders (e.g., grid controls, caption controls, wiring) would lower cyclomatic complexity and enable isolated tests.
+2. **Non-rotating file logging (Medium)** – `logging.basicConfig` wires a `FileHandler` that writes `collage_maker.log` beside the binary with no rotation strategy (`src/main.py` lines 41-49). This violates 12-Factor logging guidance and risks filling user disks; prefer stderr streaming plus opt-in rotating handlers.
+3. **Export path bypasses validators (High)** – `_export_collage` accepts whatever `_select_save_path` returns and writes directly via `QImage.save`, never invoking `utils.validation.validate_output_path` (`src/main.py` lines 622-714). Malformed paths slip through and duplicate extensions get silently appended.
+4. **Chatty UI logging (Low)** – High-frequency UI events (`CollageCell.setImage`, paint cycles) emit `logging.info`, flooding logs during normal use (`src/widgets/cell.py` lines 117-192). Demote to debug level or gate behind sampling to keep logs actionable.
+
+### Architecture & Boundaries
+1. **UI owns domain logic (High)** – `MainWindow` drives autosave snapshots, undo/redo history, export rendering, and color-application rules directly, rather than delegating to services (`src/main.py` lines 414-793). This tight coupling complicates reuse (e.g., CLI exporter) and makes unit isolation difficult.
+2. **Global singletons obscure dependencies (Medium)** – Modules rely on `src.cache.image_cache` and the module-level `_PROCESSOR = ImageProcessor()` (`ui/image_label.py` lines 1-103, `src/cache.py` lines 16-74), hindering substitution in tests and leading to implicit shared state.
+3. **Autosave payloads embed full pixmaps (Medium)** – `CollageWidget.serialize_for_autosave` base64-encodes every original pixmap, inflating autosave files and recovery time (`src/widgets/collage.py` lines 166-205). Consider storing references plus incremental diffs instead.
+
+### Performance
+1. **Repeated pixmap scaling (High)** – Each paint pass rescales the full pixmap in `_draw_image`, creating a new `QPixmap` even when geometry is unchanged (`src/widgets/cell.py` lines 186-193). Cache scaled variants keyed by target size to avoid redundant allocations during hover/resize.
+2. **UI-thread decoding for bulk add (High)** – `_add_images` loops over `QImageReader` and optimization synchronously on the main thread (`src/main.py` lines 745-784), freezing the UI when importing large batches. Move decoding/optimization onto workers (`src/workers.py`) and stream results back.
+3. **Process pools leak workers (Medium)** – `ImageProcessor.process_batch` lazily creates a `ProcessPoolExecutor` but never shuts it down (`utils/image_processor.py` lines 215-277). Long-running sessions accumulate orphaned processes and memory.
+4. **File logging hot path** – Writing every UI interaction to disk magnifies the logging issue above, compounding I/O overhead during drag/drop sessions.
+
+### Testing & CI
+1. **Coverage gaps for core UI (High)** – No automated tests exercise `MainWindow`, undo/redo flows, or save/export logic; regressions would slip through unnoticed.
+2. **Performance tests assert tautologies (Low)** – The performance micro-bench only asserts that runtime is `> 0`, providing no guard against slowdowns (`tests/performance/test_collage_layouts_perf.py` lines 10-25). Track thresholds or trend metrics instead.
+3. **Global singletons hamper testing (Medium)** – Module-level caches/processors make it difficult to inject fakes in tests, pushing teams toward integration tests instead of targeted unit coverage.
+
+### UX/UI & Accessibility
+1. **Fixed-height control surface (Medium)** – The toolbar frame is hard-clamped to 118 px, causing overflow when system fonts scale for accessibility (`src/main.py` lines 118-238). Adopt layout-driven sizing and allow wrapping for smaller windows.
+2. **Save dialog lacks accessible metadata (Medium)** – Controls created in `_prompt_save_options` omit `setAccessibleName`/`description`, and slider ranges are unlabeled, so assistive tech cannot announce purpose or value (`src/main.py` lines 653-695).
+3. **Color-only affordances (Medium)** – Stroke/fill color buttons immediately open dialogs without textual state; users with color-vision deficiencies cannot confirm selections without visual cues (`src/main.py` lines 266-337).
+4. **Drag-and-drop instructions not exposed to screen readers (Low)** – `ImageLabel` relies on placeholder text and never sets an accessible description, so the “Drag an image here” affordance is lost for AT users (`ui/image_label.py` lines 16-135).
+
+## Recommendations
+- Refactor the control panel into composable widgets/services, extract autosave/export logic into dedicated managers, and introduce dependency injection points for caches/processors.
+- Replace direct `QImage` disk writes with a validated `utils.validation.validate_output_path` pipeline before export, and normalize logging to structured stdout with optional rotation.
+- Offload heavy imaging work to background workers, cache scaled pixmaps, and ensure executors are explicitly shut down.
+- Expand automated coverage around undo/redo, export, and accessibility behaviors; strengthen performance assertions with thresholds.
+- Audit UI components for accessibility: remove fixed heights, add accessible names/descriptions, and provide textual feedback for color choices.
+
+---
+
 # Collage Maker E2E Audit — 2025-02-14
 
 ## Executive Summary
