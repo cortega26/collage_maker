@@ -9,7 +9,7 @@
 | A2 | Architecture & Boundaries | Global mutable cache lacks dependency injection hooks. | ✅ Resolved | This PR | Added configurable factory + override context for the image cache. |
 | A3 | Architecture & Boundaries | Autosave serialization is embedded in widget internals. | ✅ Resolved | This PR | Introduced dedicated autosave serializer module with dataclasses and widget integration. |
 | P1 | Performance | Autosave performs base64 conversion on UI thread for full pixmaps. | ✅ Resolved | This PR | Added background autosave encoder that caches payloads per cell. |
-| P2 | Performance | Save/load flows perform synchronous disk IO on UI thread. | 🔧 Planned | — | Offload heavy IO to worker threads. |
+| P2 | Performance | Save/load flows perform synchronous disk IO on UI thread. | ✅ Resolved | This PR | Export now streams via background worker with modal progress dialog. |
 | P3 | Performance | Performance tests lack regression thresholds. | 🔧 Planned | — | Add baseline assertions and store metrics. |
 | T1 | Testing & Quality Gates | Critical UI flows lack automated coverage. | 🔧 Planned | — | Add headless tests for undo/redo and autosave flows. |
 | T2 | Testing & Quality Gates | Tests manipulate `sys.path` directly. | 🔧 Planned | — | Replace with package imports/pytest configuration. |

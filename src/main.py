@@ -10,7 +10,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import QPoint, QStandardPaths, Qt, QTimer
+from PySide6.QtCore import QPoint, QStandardPaths, Qt, QThreadPool, QTimer
 from PySide6.QtGui import (
     QImage,
     QImageReader,
@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QProgressDialog,
     QSlider,
     QVBoxLayout,
     QWidget,
@@ -51,6 +52,7 @@ try:
     from .optimizer import ImageOptimizer
     from .widgets.collage import CollageWidget
     from .widgets.control_panel import CaptionDefaults, ControlPanel, GridDefaults
+    from .workers import Worker
 except ImportError:
     # Fallback for running `python src/main.py` directly
     import sys as _sys
@@ -69,6 +71,7 @@ except ImportError:
     from src.optimizer import ImageOptimizer
     from src.widgets.collage import CollageWidget
     from src.widgets.control_panel import CaptionDefaults, ControlPanel, GridDefaults
+    from src.workers import Worker
 
 LOGGER_NAME = "collage_maker"
 
@@ -403,9 +406,7 @@ class MainWindow(QMainWindow):
             self.top_visible_chk.blockSignals(False)
 
             self.bottom_visible_chk.blockSignals(True)
-            self.bottom_visible_chk.setChecked(
-                bool(captions.get("show_bottom", True))
-            )
+            self.bottom_visible_chk.setChecked(bool(captions.get("show_bottom", True)))
             self.bottom_visible_chk.blockSignals(False)
 
             font_family = captions.get("font_family")
@@ -539,20 +540,29 @@ class MainWindow(QMainWindow):
             path = self._select_save_path(opts.format)
             if not path:
                 return
-            primary = self._render_scaled_pixmap(opts.resolution)
-            if opts.format in ("jpeg", "jpg"):
-                primary = self._convert_for_jpeg(primary)
-            # Add basic metadata for accessibility/compatibility
-            img = primary.toImage()
-            img.setText("Software", "Collage Maker")
-            img.save(path, opts.format, opts.quality)
-            logging.info("Saved collage to %s", path)
+            primary = self._render_scaled_image(opts.resolution)
+            primary.setText("Software", "Collage Maker")
+            fmt = opts.format.lower()
+            if fmt in ("jpeg", "jpg"):
+                primary = self._ensure_image_format(primary, fmt)
 
+            original_payload: tuple[str | None, QImage | None]
+            original_payload = (None, None)
             if opts.save_original:
-                orig_path = os.path.splitext(path)[0] + "_original." + opts.format
-                self._save_original(orig_path, opts.format, opts.quality)
+                composed = self._compose_original_image()
+                if composed is None:
+                    QMessageBox.information(
+                        self,
+                        "No Original Images",
+                        "There are no original images to export.",
+                    )
+                else:
+                    if fmt in ("jpeg", "jpg"):
+                        composed = self._ensure_image_format(composed, fmt)
+                    orig_path = os.path.splitext(path)[0] + f"_original.{fmt}"
+                    original_payload = (orig_path, composed)
 
-            QMessageBox.information(self, "Saved", f"Saved: {path}")
+            self._run_export_worker(path, fmt, opts.quality, primary, original_payload)
         except Exception as e:
             logging.error("Save failed: %s", e)
             QMessageBox.critical(self, "Error", f"Could not save collage: {e}")
@@ -629,7 +639,58 @@ class MainWindow(QMainWindow):
             return None
         return path if path.lower().endswith(f".{fmt}") else f"{path}.{fmt}"
 
-    def _render_scaled_pixmap(self, resolution: int) -> QPixmap:
+    def _run_export_worker(
+        self,
+        path: str,
+        fmt: str,
+        quality: int,
+        primary: QImage,
+        original_payload: tuple[str | None, QImage | None],
+    ) -> None:
+        dialog = QProgressDialog("Saving collage...", "", 0, 0, self)
+        dialog.setWindowTitle("Saving")
+        dialog.setWindowModality(Qt.WindowModal)
+        dialog.setCancelButton(None)
+        dialog.setMinimumDuration(0)
+        dialog.show()
+
+        orig_path, orig_image = original_payload
+
+        def _write_files() -> tuple[str, str | None]:
+            uppercase_fmt = fmt.upper()
+            if not primary.save(path, uppercase_fmt, quality):
+                raise IOError(f"Failed to save collage to {path}")
+            if orig_path and orig_image is not None:
+                if not orig_image.save(orig_path, uppercase_fmt, quality):
+                    raise IOError(f"Failed to save original collage to {orig_path}")
+            return path, orig_path
+
+        worker = Worker(_write_files)
+
+        def _on_result(result: tuple[str, str | None]) -> None:
+            saved_path, original_path = result
+            message = f"Saved: {saved_path}"
+            if original_path:
+                message = f"{message}\nOriginal: {original_path}"
+            logging.info("Saved collage to %s", saved_path)
+            if original_path:
+                logging.info("Saved original collage to %s", original_path)
+            QMessageBox.information(self, "Saved", message)
+
+        def _on_error(message: str) -> None:
+            logging.error("Save failed: %s", message)
+            QMessageBox.critical(self, "Error", f"Could not save collage: {message}")
+
+        def _on_finished() -> None:
+            dialog.close()
+
+        worker.signals.result.connect(_on_result)
+        worker.signals.error.connect(_on_error)
+        worker.signals.finished.connect(_on_finished)
+
+        QThreadPool.globalInstance().start(worker)
+
+    def _render_scaled_image(self, resolution: int) -> QImage:
         """Render the collage at a scaled resolution with DPI awareness and clamping.
 
         - Multiplies logical size by ``resolution`` and device pixel ratio.
@@ -660,7 +721,7 @@ class MainWindow(QMainWindow):
         p.scale(out_w / base.width(), out_h / base.height())
         self.collage.render(p)
         p.end()
-        return QPixmap.fromImage(img)
+        return img
 
     def _add_images(self):
         # Select multiple images and fill empty cells in reading order
@@ -710,14 +771,12 @@ class MainWindow(QMainWindow):
                 f"Added {assigned} images; others could not be loaded or no empty cells left.",
             )
 
-    def _convert_for_jpeg(self, pix: QPixmap) -> QPixmap:
-        img = pix.toImage()
-        if img.hasAlphaChannel():
-            rgb = img.convertToFormat(QImage.Format_RGB32)
-            return QPixmap.fromImage(rgb)
-        return pix
+    def _ensure_image_format(self, image: QImage, fmt: str) -> QImage:
+        if fmt in ("jpeg", "jpg") and image.hasAlphaChannel():
+            return image.convertToFormat(QImage.Format_RGB32)
+        return image
 
-    def _save_original(self, path, fmt, quality):
+    def _compose_original_image(self) -> QImage | None:
         # Compute full-original grid size
         total_w = 0
         total_h = 0
@@ -736,14 +795,12 @@ class MainWindow(QMainWindow):
         total_h = sum(row_heights)
 
         if total_w <= 0 or total_h <= 0:
-            QMessageBox.information(
-                self, "No Original Images", "There are no original images to export."
-            )
-            return
+            return None
 
-        canvas = QPixmap(total_w, total_h)
+        canvas = QImage(total_w, total_h, QImage.Format_ARGB32)
         canvas.fill(Qt.transparent)
-        painter = QPainter(canvas)
+        painter = QPainter()
+        painter.begin(canvas)
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
         y_offset = 0
@@ -752,16 +809,13 @@ class MainWindow(QMainWindow):
             for c in range(self.collage.columns):
                 cell = self.collage.get_cell_at(r, c)
                 if cell and cell.original_pixmap:
-                    painter.drawPixmap(QPoint(x_offset, y_offset), cell.original_pixmap)
+                    painter.drawImage(
+                        QPoint(x_offset, y_offset), cell.original_pixmap.toImage()
+                    )
                 x_offset += col_widths[c]
             y_offset += row_heights[r]
         painter.end()
-
-        if fmt in ["jpeg", "jpg"]:
-            canvas = self._convert_for_jpeg(canvas)
-        if not canvas.save(path, fmt, quality):
-            raise IOError(f"Failed to save original collage to {path}")
-        logging.info("Saved original collage to %s", path)
+        return canvas
 
     def get_collage_state(self):
         """Return a richer snapshot for autosave and recovery."""
