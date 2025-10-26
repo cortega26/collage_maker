@@ -59,7 +59,7 @@ Manual inspection of source modules (`src/main.py`, `src/widgets/collage.py`, `s
 ## 5. UX/UI & Accessibility
 
 ### Findings
-1. **Control density vs. affordance** – The control panel uses 30 px-high spin boxes/sliders, under the recommended 44 px touch target, challenging accessibility on high-DPI displays.【F:src/main.py†L128-L299】
+1. **Control density vs. affordance** – The control panel uses 30 px-high spin boxes/sliders, under the recommended 44 px touch target, challenging accessibility on high-DPI displays.【F:src/widgets/control_panel.py†L120-L209】 _Update 2024-10: control panel interactive elements now default to 36 px heights to improve accessibility._
 2. **Limited accessible naming** – Only the collage grid is given an accessible name; action buttons, color pickers, and caption toggles lack `setAccessibleName`/`setToolTip`, reducing screen-reader navigability.【F:src/main.py†L212-L327】
 3. **Styling bypasses theme tokens** – Some controls define inline style sheets inside the Python code rather than referencing shared tokens, causing duplication and making dark-mode support harder to maintain.【F:src/main.py†L130-L187】【F:ui/style.qss†L1-L62】
 

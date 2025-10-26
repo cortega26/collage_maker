@@ -135,7 +135,7 @@ class ControlPanel(QFrame):
         self._build_caption_rows(layout)
 
     def _build_grid_row(self, parent_layout: QVBoxLayout) -> None:
-        control_height = 30
+        control_height = 36
 
         self._rows_spin = QSpinBox()
         self._rows_spin.setRange(1, 10)
@@ -178,7 +178,7 @@ class ControlPanel(QFrame):
         parent_layout.addLayout(grid_row)
 
     def _build_action_row(self, parent_layout: QVBoxLayout) -> None:
-        control_height = 30
+        control_height = 36
         actions = QHBoxLayout()
         actions.setSpacing(8)
 
@@ -199,15 +199,17 @@ class ControlPanel(QFrame):
         parent_layout.addLayout(actions)
 
     def _build_caption_rows(self, parent_layout: QVBoxLayout) -> None:
-        control_height = 30
+        control_height = 36
 
         self._top_visible_chk = QCheckBox("Show Top")
         self._top_visible_chk.setChecked(self._caption_defaults.show_top)
         self._top_visible_chk.setAccessibleName("Toggle Top Caption")
+        self._top_visible_chk.setMinimumHeight(control_height)
 
         self._bottom_visible_chk = QCheckBox("Show Bottom")
         self._bottom_visible_chk.setChecked(self._caption_defaults.show_bottom)
         self._bottom_visible_chk.setAccessibleName("Toggle Bottom Caption")
+        self._bottom_visible_chk.setMinimumHeight(control_height)
 
         self._font_combo = QFontComboBox()
         self._font_combo.setCurrentText(self._caption_defaults.font_family)
@@ -223,7 +225,7 @@ class ControlPanel(QFrame):
         self._font_size_slider = QSlider(Qt.Horizontal)
         self._font_size_slider.setRange(8, 120)
         self._font_size_slider.setValue(self._caption_defaults.font_size)
-        self._font_size_slider.setFixedHeight(18)
+        self._font_size_slider.setFixedHeight(control_height)
         self._font_size_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self._font_size_slider.valueChanged.connect(self.fontSizeSliderChanged.emit)
 
@@ -257,6 +259,7 @@ class ControlPanel(QFrame):
         self._uppercase_chk = QCheckBox("UPPERCASE")
         self._uppercase_chk.setChecked(self._caption_defaults.uppercase)
         self._uppercase_chk.setAccessibleName("Toggle Uppercase Captions")
+        self._uppercase_chk.setMinimumHeight(control_height)
 
         for checkbox in (
             self._top_visible_chk,
