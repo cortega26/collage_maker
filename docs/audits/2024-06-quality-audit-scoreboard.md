@@ -16,6 +16,6 @@
 | T3 | Testing & Quality Gates | Missing lint/type/static analysis configuration. | ✅ Resolved | This PR | Added shared `pyproject.toml` with ruff/black/isort/mypy/bandit defaults and documented mandatory commands in README. |
 | U1 | UX/UI & Accessibility | Control panel controls below recommended accessibility height. | ✅ Resolved | This PR | Increased control heights to 36 px and aligned sliders/check boxes with accessibility targets. |
 | U2 | UX/UI & Accessibility | Accessible names/tooltips missing for many controls. | ✅ Resolved | This PR | Added accessible names and tooltips to control panel widgets. |
-| U3 | UX/UI & Accessibility | Inline styling bypasses shared theme tokens. | 🔧 Planned | — | Centralize styling within `style.qss`/token helpers. |
+| U3 | UX/UI & Accessibility | Inline styling bypasses shared theme tokens. | ✅ Resolved | This PR | Moved combo box styling into `style.qss` to reuse theme tokens. |
 
 _Status legend: ✅ Resolved · 🔧 Planned · ⏳ In Progress · ⚠️ Blocked._

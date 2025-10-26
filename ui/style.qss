@@ -34,7 +34,16 @@ QComboBox {
     min-width: 140px;
     min-height: 32px;
 }
-QComboBox::drop-down { width: 22px; border-left: 1px solid #e5e7eb; }
+QComboBox::drop-down {
+    border-left: 1px solid #d1d5db;
+    width: 22px;
+    background-color: transparent;
+}
+QComboBox::down-arrow {
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+}
 QComboBox QAbstractItemView {
     border: 1px solid #d1d5db;
     selection-background-color: #0d6efd;
