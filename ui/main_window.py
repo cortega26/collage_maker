@@ -40,22 +40,6 @@ class MainWindow(QMainWindow):
         self.layout_combo = QComboBox()
         self.layout_combo.addItems(CollageLayouts.get_layout_names())
         self.layout_combo.currentTextChanged.connect(self._change_layout)
-        self.layout_combo.setStyleSheet("""
-            QComboBox {
-                border: 1px solid #ccc;
-                border-radius: 3px;
-                padding: 5px 10px;
-                min-width: 6em;
-            }
-            QComboBox::drop-down {
-                border-left: 1px solid #ccc;
-                width: 20px;
-            }
-            QComboBox::down-arrow {
-                width: 12px;
-                height: 12px;
-            }
-        """)
         controls_layout.addWidget(self.layout_combo)
         
         # Clear button
