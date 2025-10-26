@@ -1,10 +1,5 @@
-import os
-import sys
 import json
 import pytest
-
-# Ensure project root on path
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from src.grid_layout import GridLayoutManager
 

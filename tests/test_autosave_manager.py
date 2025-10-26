@@ -2,11 +2,9 @@ import builtins
 import logging
 import os
 from pathlib import Path
-import sys
 
 import pytest
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from src import config
 from src.managers.autosave import AutosaveError, AutosaveManager, autosave_metrics
 

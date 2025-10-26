@@ -1,11 +1,6 @@
-import os
-import sys
 from pathlib import Path
 
 from PIL import Image
-
-# Ensure project root on path
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from utils.image_processor import ImageProcessor
 
