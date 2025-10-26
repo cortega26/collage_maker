@@ -14,7 +14,7 @@ except ImportError:
     HAS_PSUTIL = False
 
 from .. import config
-from ..cache import image_cache
+from ..cache import get_cache
 
 
 class PerformanceMonitor:
@@ -41,6 +41,6 @@ class PerformanceMonitor:
             logging.warning("Memory check failed: %s", e)
 
     def _optimize(self) -> None:
-        image_cache.cleanup()
+        get_cache().cleanup()
         gc.collect()
         logging.info("PerformanceMonitor: memory optimization executed")
