@@ -1,12 +1,7 @@
 import json
-import os
-import sys
 import timeit
 from pathlib import Path
 from typing import Final
-
-# Ensure project root on path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from utils.collage_layouts import CollageLayouts
 

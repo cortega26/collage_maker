@@ -41,6 +41,7 @@ logs/
 *.sh
 *.ps1
 *.ini
+!pytest.ini
 
 # Misc project-specific
 *.qodo
