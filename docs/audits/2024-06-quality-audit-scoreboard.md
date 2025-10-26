@@ -3,7 +3,7 @@
 | ID | Category | Finding | Status | Fix Reference | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Q2 | Code Quality & Maintainability | Global logging uses static handlers without rotation, risking duplicate handlers and log bloat. | ✅ Resolved | This PR | Replaced `basicConfig` with idempotent rotating handler configuration. |
-| Q1 | Code Quality & Maintainability | `MainWindow` control panel mixes UI creation and business logic, exceeding complexity targets. | 🔧 Planned | — | Requires extraction into dedicated view/presenter classes. |
+| Q1 | Code Quality & Maintainability | `MainWindow` control panel mixes UI creation and business logic, exceeding complexity targets. | ✅ Resolved | This PR | Extracted a reusable `ControlPanel` widget and bound signals from `MainWindow` to reduce controller complexity. |
 | Q3 | Code Quality & Maintainability | `collage_app.py` diverges from PySide6 defaults and lacks shared validation. | 🔧 Planned | — | Evaluate deprecation vs. refactor toward shared widgets. |
 | A1 | Architecture & Boundaries | UI tightly couples persistence and autosave flows. | 🔧 Planned | — | Introduce controller/service layer for headless automation. |
 | A2 | Architecture & Boundaries | Global mutable cache lacks dependency injection hooks. | 🔧 Planned | — | Consider factory or DI container for cache strategy swaps. |
