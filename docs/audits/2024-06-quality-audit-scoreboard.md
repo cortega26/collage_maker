@@ -11,7 +11,7 @@
 | P1 | Performance | Autosave performs base64 conversion on UI thread for full pixmaps. | ✅ Resolved | This PR | Added background autosave encoder that caches payloads per cell. |
 | P2 | Performance | Save/load flows perform synchronous disk IO on UI thread. | ✅ Resolved | This PR | Export now streams via background worker with modal progress dialog. |
 | P3 | Performance | Performance tests lack regression thresholds. | ✅ Resolved | This PR | Added baseline assertions and temp metrics capture for layout lookups. |
-| T1 | Testing & Quality Gates | Critical UI flows lack automated coverage. | 🔧 Planned | — | Add headless tests for undo/redo and autosave flows. |
+| T1 | Testing & Quality Gates | Critical UI flows lack automated coverage. | ✅ Resolved | This PR | Added headless MainWindow tests covering undo/redo and autosave snapshots. |
 | T2 | Testing & Quality Gates | Tests manipulate `sys.path` directly. | 🔧 Planned | — | Replace with package imports/pytest configuration. |
 | T3 | Testing & Quality Gates | Missing lint/type/static analysis configuration. | 🔧 Planned | — | Document and enforce lint/type/security tooling. |
 | U1 | UX/UI & Accessibility | Control panel controls below recommended accessibility height. | 🔧 Planned | — | Revisit sizing to meet WCAG targets. |
