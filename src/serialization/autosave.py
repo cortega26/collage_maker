@@ -216,13 +216,15 @@ class CellAutosaveState:
     def from_cell(cls, cell: Any, *, row: int, column: int) -> "CellAutosaveState":
         """Build a snapshot from a CollageCell-like object."""
         image_source = getattr(cell, "original_pixmap", None) or getattr(cell, "pixmap", None)
+        cached_payload = getattr(cell, "autosave_payload", None)
+        image_payload = cached_payload if cached_payload is not None else encode_pixmap(image_source)
         return cls(
             row=row,
             column=column,
             row_span=int(getattr(cell, "row_span", 1)),
             col_span=int(getattr(cell, "col_span", 1)),
             has_image=bool(getattr(cell, "pixmap", None)),
-            image=encode_pixmap(image_source),
+            image=image_payload,
             caption=str(getattr(cell, "caption", "")),
             top_caption=str(getattr(cell, "top_caption", "")),
             bottom_caption=str(getattr(cell, "bottom_caption", "")),
@@ -253,6 +255,8 @@ class CellAutosaveState:
             cell.setImage(pixmap, original=pixmap)
         else:
             cell.clearImage()
+        if hasattr(cell, "set_autosave_payload"):
+            cell.set_autosave_payload(encoded_image if pixmap else None)
         for attr, value in (
             ("caption", self.caption),
             ("top_caption", self.top_caption),

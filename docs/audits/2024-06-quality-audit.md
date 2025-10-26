@@ -35,7 +35,7 @@ Manual inspection of source modules (`src/main.py`, `src/widgets/collage.py`, `s
 ## 3. Performance
 
 ### Findings
-1. **Autosave base64 conversion** – Every autosave encodes full-resolution pixmaps to PNG strings, which is CPU and memory intensive for large collages, and the data remains in RAM until garbage collected.【F:src/widgets/collage.py†L130-L221】
+1. **Autosave base64 conversion** – Every autosave encodes full-resolution pixmaps to PNG strings, which is CPU and memory intensive for large collages, and the data remains in RAM until garbage collected.【F:src/widgets/collage.py†L130-L221】 _Update 2024-07: autosave payloads are now encoded via a background manager and cached per cell, keeping the UI thread responsive._
 2. **Synchronous disk IO on UI thread** – Save/load flows invoke QFileDialog and image writes from the main thread, risking UI freezes for large exports or slow storage devices.【F:src/main.py†L444-L590】
 3. **Performance tests lack thresholds** – `tests/performance/test_collage_layouts_perf.py` only asserts the timer ran, providing no regression guardrails or baseline storage, so perf regressions will go unnoticed.【F:tests/performance/test_collage_layouts_perf.py†L11-L32】
 

@@ -21,6 +21,7 @@ from PySide6.QtCore import QBuffer, QByteArray
 from .. import config
 from ..cache import get_cache
 from ..optimizer import ImageOptimizer
+from ..managers.autosave_encoding import AutosaveToken, get_autosave_encoder
 from utils.image_operations import apply_filter as pil_apply_filter, adjust_brightness as pil_brightness, adjust_contrast as pil_contrast
 from PIL import Image
 from io import BytesIO
@@ -95,6 +96,12 @@ class CollageCell(QWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setAccessibleName(f"Collage Cell {cell_id}")
 
+        # Autosave payload tracking
+        self._autosave_payload: Optional[str] = None
+        self._autosave_token: AutosaveToken = (self.cell_id, 0)
+        self._autosave_generation: int = 0
+        self._autosave_pending: bool = False
+
         logging.info("Cell %d created; size %dx%d", cell_id, cell_size, cell_size)
 
     @property
@@ -123,6 +130,7 @@ class CollageCell(QWidget):
             self.original_pixmap = pixmap
         self.update()
         logging.info("Cell %d: image set.", self.cell_id)
+        self._schedule_autosave_encoding(self.original_pixmap or self.pixmap)
 
     def clearImage(self) -> None:
         """Clear image and metadata."""
@@ -130,6 +138,7 @@ class CollageCell(QWidget):
         self.original_pixmap = None
         self.caption = ""
         self.update()
+        self._schedule_autosave_encoding(None)
 
     def paintEvent(self, event):
         """Paint placeholder if empty, otherwise image and optional caption."""
@@ -484,6 +493,8 @@ class CollageCell(QWidget):
                 self.pixmap, source.pixmap = source.pixmap, self.pixmap
                 self.original_pixmap, source.original_pixmap = source.original_pixmap, self.original_pixmap
                 self.caption, source.caption = source.caption, self.caption
+                self._schedule_autosave_encoding(self.original_pixmap or self.pixmap)
+                source._schedule_autosave_encoding(source.original_pixmap or source.pixmap)
                 self.update(); source.update()
                 event.acceptProposedAction()
                 return
@@ -566,3 +577,40 @@ class CollageCell(QWidget):
             )
             self.update()
             gc.collect()
+            self._schedule_autosave_encoding(self.original_pixmap or self.pixmap)
+
+    @property
+    def autosave_payload(self) -> Optional[str]:
+        """Return the cached autosave payload if available."""
+        return self._autosave_payload
+
+    def set_autosave_payload(self, payload: Optional[str]) -> None:
+        """Set the cached autosave payload (used when restoring state)."""
+        self._autosave_payload = payload
+        self._autosave_pending = False
+
+    def _schedule_autosave_encoding(self, pixmap: Optional[QPixmap]) -> None:
+        """Start background encoding for the given pixmap."""
+        self._autosave_generation += 1
+        self._autosave_token = (self.cell_id, self._autosave_generation)
+        self._autosave_payload = None
+        self._autosave_pending = False
+        if pixmap is None:
+            return
+        image = pixmap.toImage()
+        if image.isNull():
+            return
+        self._autosave_pending = True
+        encoder = get_autosave_encoder()
+        encoder.encode(self._autosave_token, image, self._handle_autosave_result)
+
+    def _handle_autosave_result(self, token: AutosaveToken, payload: Optional[str]) -> None:
+        """Receive encoded payloads from the background encoder."""
+        if token != self._autosave_token:
+            return
+        self._autosave_pending = False
+        if payload is None:
+            logging.warning("Cell %d: autosave encoding failed", self.cell_id)
+            self._autosave_payload = None
+            return
+        self._autosave_payload = payload
