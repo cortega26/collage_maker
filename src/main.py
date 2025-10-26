@@ -2,14 +2,13 @@
 """
 Entry point and main application window for Collage Maker.
 """
-import copy
 import logging
 import os
 import sys
 from dataclasses import dataclass
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QPoint, QStandardPaths, Qt, QTimer
 from PySide6.QtGui import (
@@ -40,6 +39,12 @@ from PySide6.QtWidgets import (
 try:
     # Preferred package-relative imports
     from . import config, style_tokens
+    from .controllers import (
+        CollageSessionController,
+        CollageStateAdapter,
+        RedoUnavailableError,
+        UndoUnavailableError,
+    )
     from .managers.autosave import AutosaveManager
     from .managers.performance import PerformanceMonitor
     from .managers.recovery import ErrorRecoveryManager
@@ -52,6 +57,12 @@ except ImportError:
 
     _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from src import config, style_tokens
+    from src.controllers import (
+        CollageSessionController,
+        CollageStateAdapter,
+        RedoUnavailableError,
+        UndoUnavailableError,
+    )
     from src.managers.autosave import AutosaveManager
     from src.managers.performance import PerformanceMonitor
     from src.managers.recovery import ErrorRecoveryManager
@@ -296,29 +307,25 @@ class MainWindow(QMainWindow):
 
     # --- Undo / Redo helpers ---
     def _init_history_tracking(self) -> None:
-        self._history_limit = 30
-        self._undo_stack: List[Dict[str, Any]] = []
-        self._redo_stack: List[Dict[str, Any]] = []
-        self._is_restoring_state = False
-        self._history_baseline: Dict[str, Any] = copy.deepcopy(self.get_collage_state())
+        adapter = CollageStateAdapter(
+            read_state=self.get_collage_state,
+            apply_state=self._apply_state_from_snapshot,
+        )
+        self.session_controller = CollageSessionController(
+            adapter,
+            history_limit=30,
+        )
 
     def _capture_for_undo(self) -> bool:
         """Store the current baseline before a modifying action."""
-        if self._is_restoring_state:
-            return False
-        snapshot = copy.deepcopy(self._history_baseline)
-        self._undo_stack.append(snapshot)
-        if len(self._undo_stack) > self._history_limit:
-            self._undo_stack.pop(0)
-        self._redo_stack.clear()
-        return True
+
+        return self.session_controller.capture_snapshot()
 
     def _discard_latest_snapshot(self) -> None:
-        if self._undo_stack:
-            self._undo_stack.pop()
+        self.session_controller.discard_latest_snapshot()
 
     def _update_history_baseline(self) -> None:
-        self._history_baseline = copy.deepcopy(self.get_collage_state())
+        self.session_controller.update_baseline()
 
     def _update_grid(self):
         rows = self.rows_spin.value()
@@ -357,100 +364,92 @@ class MainWindow(QMainWindow):
         if captured:
             self._update_history_baseline()
 
-    def _restore_state(self, state: Dict[str, Any]) -> None:
+    def _apply_state_from_snapshot(self, state: Dict[str, Any]) -> None:
         if not state:
             return
-        self._is_restoring_state = True
-        try:
-            controls = state.get("controls", {})
-            captions = state.get("captions", {})
-            collage_state = state.get("collage", {})
 
-            if collage_state:
-                self.collage.restore_from_serialized(collage_state)
+        controls = state.get("controls", {})
+        captions = state.get("captions", {})
+        collage_state = state.get("collage", {})
 
-            if controls:
-                rows = controls.get("rows", self.rows_spin.value())
-                cols = controls.get("columns", self.cols_spin.value())
-                template = controls.get("template")
+        if collage_state:
+            self.collage.restore_from_serialized(collage_state)
 
-                self.rows_spin.blockSignals(True)
-                self.rows_spin.setValue(rows)
-                self.rows_spin.blockSignals(False)
+        if controls:
+            rows = controls.get("rows", self.rows_spin.value())
+            cols = controls.get("columns", self.cols_spin.value())
+            template = controls.get("template")
 
-                self.cols_spin.blockSignals(True)
-                self.cols_spin.setValue(cols)
-                self.cols_spin.blockSignals(False)
+            self.rows_spin.blockSignals(True)
+            self.rows_spin.setValue(rows)
+            self.rows_spin.blockSignals(False)
 
-                if template and self.template_combo is not None:
-                    if template in [
-                        self.template_combo.itemText(i)
-                        for i in range(self.template_combo.count())
-                    ]:
-                        self.template_combo.blockSignals(True)
-                        self.template_combo.setCurrentText(template)
-                        self.template_combo.blockSignals(False)
+            self.cols_spin.blockSignals(True)
+            self.cols_spin.setValue(cols)
+            self.cols_spin.blockSignals(False)
 
-            if captions:
-                self.top_visible_chk.blockSignals(True)
-                self.top_visible_chk.setChecked(bool(captions.get("show_top", True)))
-                self.top_visible_chk.blockSignals(False)
+            if template and self.template_combo is not None:
+                if template in [
+                    self.template_combo.itemText(i)
+                    for i in range(self.template_combo.count())
+                ]:
+                    self.template_combo.blockSignals(True)
+                    self.template_combo.setCurrentText(template)
+                    self.template_combo.blockSignals(False)
 
-                self.bottom_visible_chk.blockSignals(True)
-                self.bottom_visible_chk.setChecked(
-                    bool(captions.get("show_bottom", True))
+        if captions:
+            self.top_visible_chk.blockSignals(True)
+            self.top_visible_chk.setChecked(bool(captions.get("show_top", True)))
+            self.top_visible_chk.blockSignals(False)
+
+            self.bottom_visible_chk.blockSignals(True)
+            self.bottom_visible_chk.setChecked(
+                bool(captions.get("show_bottom", True))
+            )
+            self.bottom_visible_chk.blockSignals(False)
+
+            font_family = captions.get("font_family")
+            if font_family:
+                self.font_combo.blockSignals(True)
+                self.font_combo.setCurrentText(font_family)
+                self.font_combo.blockSignals(False)
+
+            font_value = captions.get("font_size")
+            if font_value is None:
+                font_value = captions.get(
+                    "min_size",
+                    captions.get("max_size", self.font_size_spin.value()),
                 )
-                self.bottom_visible_chk.blockSignals(False)
+            self._set_font_size_controls(int(font_value))
 
-                font_family = captions.get("font_family")
-                if font_family:
-                    self.font_combo.blockSignals(True)
-                    self.font_combo.setCurrentText(font_family)
-                    self.font_combo.blockSignals(False)
+            self.stroke_width_spin.blockSignals(True)
+            self.stroke_width_spin.setValue(
+                int(captions.get("stroke_width", self.stroke_width_spin.value()))
+            )
+            self.stroke_width_spin.blockSignals(False)
 
-                font_value = captions.get("font_size")
-                if font_value is None:
-                    font_value = captions.get(
-                        "min_size",
-                        captions.get("max_size", self.font_size_spin.value()),
-                    )
-                self._set_font_size_controls(int(font_value))
+            self.uppercase_chk.blockSignals(True)
+            self.uppercase_chk.setChecked(
+                bool(captions.get("uppercase", self.uppercase_chk.isChecked()))
+            )
+            self.uppercase_chk.blockSignals(False)
 
-                self.stroke_width_spin.blockSignals(True)
-                self.stroke_width_spin.setValue(
-                    int(captions.get("stroke_width", self.stroke_width_spin.value()))
-                )
-                self.stroke_width_spin.blockSignals(False)
-
-                self.uppercase_chk.blockSignals(True)
-                self.uppercase_chk.setChecked(
-                    bool(captions.get("uppercase", self.uppercase_chk.isChecked()))
-                )
-                self.uppercase_chk.blockSignals(False)
-        finally:
-            self._is_restoring_state = False
-        self._update_history_baseline()
         self.collage.update()
 
+    def _restore_state(self, state: Dict[str, Any]) -> None:
+        self.session_controller.restore_state(state)
+
     def _undo(self):
-        if not self._undo_stack:
+        try:
+            self.session_controller.undo()
+        except UndoUnavailableError:
             return
-        snapshot = self._undo_stack.pop()
-        current = copy.deepcopy(self.get_collage_state())
-        self._redo_stack.append(current)
-        if len(self._redo_stack) > self._history_limit:
-            self._redo_stack.pop(0)
-        self._restore_state(snapshot)
 
     def _redo(self):
-        if not self._redo_stack:
+        try:
+            self.session_controller.redo()
+        except RedoUnavailableError:
             return
-        snapshot = self._redo_stack.pop()
-        current = copy.deepcopy(self.get_collage_state())
-        self._undo_stack.append(current)
-        if len(self._undo_stack) > self._history_limit:
-            self._undo_stack.pop(0)
-        self._restore_state(snapshot)
 
     def _select_all(self):
         for cell in self.collage.cells:

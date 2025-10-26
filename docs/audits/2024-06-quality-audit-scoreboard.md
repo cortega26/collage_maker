@@ -5,7 +5,7 @@
 | Q2 | Code Quality & Maintainability | Global logging uses static handlers without rotation, risking duplicate handlers and log bloat. | ✅ Resolved | This PR | Replaced `basicConfig` with idempotent rotating handler configuration. |
 | Q1 | Code Quality & Maintainability | `MainWindow` control panel mixes UI creation and business logic, exceeding complexity targets. | ✅ Resolved | This PR | Extracted a reusable `ControlPanel` widget and bound signals from `MainWindow` to reduce controller complexity. |
 | Q3 | Code Quality & Maintainability | `collage_app.py` diverges from PySide6 defaults and lacks shared validation. | ✅ Resolved | This PR | Legacy launcher now proxies to shared PySide6 window and validates CLI preload paths. |
-| A1 | Architecture & Boundaries | UI tightly couples persistence and autosave flows. | 🔧 Planned | — | Introduce controller/service layer for headless automation. |
+| A1 | Architecture & Boundaries | UI tightly couples persistence and autosave flows. | ✅ Resolved | This PR | Added reusable session controller that mediates state/history outside the UI. |
 | A2 | Architecture & Boundaries | Global mutable cache lacks dependency injection hooks. | 🔧 Planned | — | Consider factory or DI container for cache strategy swaps. |
 | A3 | Architecture & Boundaries | Autosave serialization is embedded in widget internals. | 🔧 Planned | — | Move toward serializer operating on data model. |
 | P1 | Performance | Autosave performs base64 conversion on UI thread for full pixmaps. | 🔧 Planned | — | Evaluate worker-based encoding or incremental saves. |
