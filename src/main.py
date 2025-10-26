@@ -5,6 +5,7 @@ Entry point and main application window for Collage Maker.
 import sys
 import os
 import logging
+from logging.handlers import RotatingFileHandler
 import copy
 from typing import Any, Dict, List, Optional
 
@@ -38,19 +39,53 @@ except ImportError:
     from src.managers.recovery import ErrorRecoveryManager
     from src.optimizer import ImageOptimizer
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    handlers=[
-        logging.FileHandler("collage_maker.log"),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+LOGGER_NAME = "collage_maker"
+
+
+def configure_logging() -> logging.Logger:
+    """Configure and return the application logger.
+
+    The handler setup is idempotent to avoid duplicate handlers when the module
+    is imported multiple times (e.g., in tests). A rotating file handler limits
+    on-disk log growth while mirroring output to stdout for developer visibility.
+    """
+
+    logger = logging.getLogger(LOGGER_NAME)
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+    )
+
+    log_path = Path(__file__).resolve().parents[1] / "collage_maker.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    file_handler = RotatingFileHandler(
+        log_path,
+        maxBytes=1_048_576,
+        backupCount=5,
+        encoding="utf-8",
+    )
+    file_handler.setFormatter(formatter)
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+    logger.propagate = False
+
+    return logger
+
+
+logger = configure_logging()
 
 
 def global_exception_handler(exc_type, value, tb):
-    logging.error("Uncaught exception", exc_info=(exc_type, value, tb))
+    logger.error("Uncaught exception", exc_info=(exc_type, value, tb))
     sys.__excepthook__(exc_type, value, tb)
 
 
