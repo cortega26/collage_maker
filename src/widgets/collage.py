@@ -4,14 +4,19 @@ Defines CollageWidget: a grid of CollageCell widgets with merge/split functional
 """
 from typing import Optional, Tuple, List, Dict, Any
 import logging
-import base64
 
 from PySide6.QtWidgets import QWidget, QGridLayout
-from PySide6.QtCore import Qt, QSize, QBuffer, QIODevice, QByteArray
-from PySide6.QtGui import QPixmap, QColor
+from PySide6.QtCore import QSize
 
 from .. import config
 from .cell import CollageCell
+from ..serialization import (
+    CollageAutosaveState,
+    CellAutosaveState,
+    MergedCellState,
+    serialize_snapshot,
+    deserialize_snapshot,
+)
 
 
 class CollageWidget(QWidget):
@@ -98,195 +103,65 @@ class CollageWidget(QWidget):
         for cell in self.cells:
             self._set_cell_size(cell, base_w, base_h)
 
-    def _snapshot_cells(self) -> Dict[Tuple[int, int], Dict[str, object]]:
-        """Return a mapping of cell position to serialized state."""
-        state: Dict[Tuple[int, int], Dict[str, object]] = {}
-        for cell, pos in self._cell_pos_map.items():
-            state[pos] = self._serialize_cell(cell)
+    def _snapshot_cells(self) -> Dict[Tuple[int, int], CellAutosaveState]:
+        """Return a mapping of cell position to autosave-ready state."""
+        state: Dict[Tuple[int, int], CellAutosaveState] = {}
+        for cell, (row, col) in self._cell_pos_map.items():
+            state[(row, col)] = CellAutosaveState.from_cell(cell, row=row, column=col)
         return state
 
-    def _serialize_cell(self, cell: CollageCell) -> Dict[str, object]:
-        """Capture the state of a single cell for restoration."""
-        data = {attr: getattr(cell, attr) for attr in self._CELL_STATE_ATTRS}
-        data["pixmap"] = cell.pixmap
-        data["original_pixmap"] = cell.original_pixmap
-        data["selected"] = getattr(cell, "selected", False)
-        return data
-
-    def _restore_cell(self, cell: CollageCell, state: Dict[str, object]) -> None:
-        """Restore a cell's state from serialized data."""
-        pix = state.get("pixmap")
-        orig = state.get("original_pixmap")
-        if pix:
-            cell.setImage(pix, original=orig or pix)
-        else:
-            cell.clearImage()
-        for attr in self._CELL_STATE_ATTRS:
-            if attr in state:
-                setattr(cell, attr, state[attr])
-        cell.selected = state.get("selected", False)
-        cell.update()
-
-    def _encode_pixmap(self, pixmap) -> Optional[str]:
-        if not pixmap or pixmap.isNull():
-            return None
-        buffer = QBuffer()
-        if not buffer.open(QIODevice.WriteOnly):
-            return None
-        # Store as PNG for broad compatibility
-        pixmap.save(buffer, "PNG")
-        return base64.b64encode(bytes(buffer.data())).decode("ascii")
-
-    def _decode_pixmap(self, encoded: Optional[str]) -> Optional[QPixmap]:
-        if not encoded:
-            return None
-        try:
-            raw = QByteArray.fromBase64(encoded.encode("ascii"))
-        except Exception:
-            logging.warning("Failed to decode pixmap: invalid base64 input")
-            return None
-        pixmap = QPixmap()
-        if not pixmap.loadFromData(bytes(raw), "PNG"):
-            logging.warning("Failed to load pixmap from decoded data")
-            return None
-        return pixmap
-
-    @staticmethod
-    def _enum_to_int(value: Any) -> Optional[int]:
-        if value is None:
-            return None
-        if isinstance(value, int):
-            return value
-        candidate = getattr(value, "value", value)
-        try:
-            return int(candidate)
-        except (TypeError, ValueError):
-            return None
+    def _restore_cell(self, cell: CollageCell, state: CellAutosaveState) -> None:
+        """Restore a cell's state from a serialized autosave snapshot."""
+        state.apply_to_cell(cell)
 
     def serialize_for_autosave(self) -> Dict[str, Any]:
         """Return a JSON-serialisable snapshot of the collage grid."""
-        state: Dict[str, Any] = {
-            "rows": self.rows,
-            "columns": self.columns,
-            "spacing": self.spacing,
-            "merged_cells": [
-                {
-                    "row": row,
-                    "column": col,
-                    "row_span": span[0],
-                    "col_span": span[1],
-                }
+        snapshot = CollageAutosaveState(
+            rows=self.rows,
+            columns=self.columns,
+            spacing=self.spacing,
+            merged_cells=[
+                MergedCellState(row=row, column=col, row_span=span[0], col_span=span[1])
                 for (row, col), span in self.merged_cells.items()
             ],
-            "cells": [],
-        }
-
-        for cell, (row, col) in self._cell_pos_map.items():
-            stroke_color = getattr(cell, "caption_stroke_color", None)
-            stroke_color = list(stroke_color.getRgb()) if stroke_color else None
-            fill_color = getattr(cell, "caption_fill_color", None)
-            fill_color = list(fill_color.getRgb()) if fill_color else None
-            transformation_mode = self._enum_to_int(getattr(cell, "transformation_mode", None))
-            aspect_mode = self._enum_to_int(getattr(cell, "aspect_ratio_mode", None))
-            cell_state: Dict[str, Any] = {
-                "row": row,
-                "column": col,
-                "row_span": getattr(cell, "row_span", 1),
-                "col_span": getattr(cell, "col_span", 1),
-                "has_image": bool(cell.pixmap),
-                "image": self._encode_pixmap(getattr(cell, "original_pixmap", None) or cell.pixmap),
-                "caption": cell.caption,
-                "top_caption": getattr(cell, "top_caption", ""),
-                "bottom_caption": getattr(cell, "bottom_caption", ""),
-                "show_top_caption": getattr(cell, "show_top_caption", True),
-                "show_bottom_caption": getattr(cell, "show_bottom_caption", True),
-                "caption_font_family": getattr(cell, "caption_font_family", ""),
-                "caption_min_size": getattr(cell, "caption_min_size", 0),
-                "caption_max_size": getattr(cell, "caption_max_size", 0),
-                "caption_uppercase": getattr(cell, "caption_uppercase", False),
-                "caption_stroke_width": getattr(cell, "caption_stroke_width", 0),
-                "caption_stroke_color": stroke_color,
-                "caption_fill_color": fill_color,
-                "caption_safe_margin_ratio": getattr(cell, "caption_safe_margin_ratio", 0.0),
-                "caption_font_size": getattr(cell, "caption_font_size", 0),
-                "caption_bold": getattr(cell, "caption_bold", False),
-                "caption_italic": getattr(cell, "caption_italic", False),
-                "caption_underline": getattr(cell, "caption_underline", False),
-                "transformation_mode": transformation_mode,
-                "aspect_ratio_mode": aspect_mode,
-                "selected": getattr(cell, "selected", False),
-            }
-            state["cells"].append(cell_state)
-
-        return state
+            cells=[
+                CellAutosaveState.from_cell(cell, row=row, column=col)
+                for cell, (row, col) in self._cell_pos_map.items()
+            ],
+        )
+        return serialize_snapshot(snapshot)
 
     def restore_from_serialized(self, state: Dict[str, Any]) -> None:
         """Restore previously serialized state produced by serialize_for_autosave."""
         if not state:
             return
 
-        rows = int(state.get("rows", self.rows))
-        columns = int(state.get("columns", self.columns))
-        self.spacing = int(state.get("spacing", self.spacing))
+        snapshot = deserialize_snapshot(state)
+
+        if "spacing" in state:
+            self.spacing = snapshot.spacing
         self.grid_layout.setSpacing(self.spacing)
 
-        self.rows = rows
-        self.columns = columns
+        if "rows" in state:
+            self.rows = snapshot.rows
+        if "columns" in state:
+            self.columns = snapshot.columns
         self.populate_grid()
 
-        # Reapply merges before restoring per-cell data so geometry lines up.
-        merges = state.get("merged_cells", [])
-        for merge in merges:
-            try:
-                r = int(merge.get("row", 0))
-                c = int(merge.get("column", 0))
-                rs = int(merge.get("row_span", 1))
-                cs = int(merge.get("col_span", 1))
-            except (TypeError, ValueError):
-                continue
-            self.merge_cells(r, c, rs, cs, require_selection=False)
+        for merge in snapshot.merged_cells:
+            self.merge_cells(
+                merge.row,
+                merge.column,
+                merge.row_span,
+                merge.col_span,
+                require_selection=False,
+            )
 
-        for cell_state in state.get("cells", []):
-            row = cell_state.get("row")
-            col = cell_state.get("column")
-            if row is None or col is None:
-                continue
-            cell = self.get_cell_at(int(row), int(col))
+        for cell_state in snapshot.cells:
+            cell = self.get_cell_at(cell_state.row, cell_state.column)
             if not cell:
                 continue
-
-            encoded_image = cell_state.get("image")
-            pixmap = self._decode_pixmap(encoded_image)
-            if pixmap:
-                cell.setImage(pixmap, original=pixmap)
-            else:
-                cell.clearImage()
-
-            for attr in self._CELL_STATE_ATTRS:
-                if attr not in cell_state:
-                    continue
-                value = cell_state[attr]
-                if attr in ("caption_stroke_color", "caption_fill_color") and value:
-                    if isinstance(value, (list, tuple)) and len(value) >= 3:
-                        value = QColor(*value)
-                    else:
-                        value = None
-                elif attr == "transformation_mode" and value is not None:
-                    try:
-                        value = Qt.TransformationMode(int(value))
-                    except (TypeError, ValueError):
-                        value = None
-                elif attr == "aspect_ratio_mode" and value is not None:
-                    try:
-                        value = Qt.AspectRatioMode(int(value))
-                    except (TypeError, ValueError):
-                        value = None
-                setattr(cell, attr, value)
-
-            cell.row_span = int(cell_state.get("row_span", getattr(cell, "row_span", 1)))
-            cell.col_span = int(cell_state.get("col_span", getattr(cell, "col_span", 1)))
-            cell.selected = bool(cell_state.get("selected", False))
-            cell.update()
+            cell_state.apply_to_cell(cell)
 
         self._apply_sizes()
         self.update()
