@@ -197,6 +197,7 @@ class MainWindow(QMainWindow):
 
         # History tracking for undo / redo
         self._init_history_tracking()
+        self._caption_snapshot_captured = False
 
         logging.info("MainWindow initialized.")
 
@@ -237,32 +238,59 @@ class MainWindow(QMainWindow):
         col = QColorDialog.getColor(parent=self)
         if not col.isValid():
             return
-        # Apply to selection immediately
+        self._ensure_caption_snapshot()
+        changed = False
         for cell in [c for c in self.collage.cells if getattr(c, "selected", False)]:
+            cell_changed = False
             if which == "stroke":
-                cell.caption_stroke_color = col
+                if cell.caption_stroke_color != col:
+                    cell.caption_stroke_color = col
+                    cell_changed = True
             else:
-                cell.caption_fill_color = col
-            cell.update()
+                if cell.caption_fill_color != col:
+                    cell.caption_fill_color = col
+                    cell_changed = True
+            if cell_changed:
+                cell.update()
+                changed = True
+        self._finalize_caption_snapshot(changed=changed)
 
     def _apply_captions_now(self):
+        if self.caption_timer.isActive():
+            self.caption_timer.stop()
+        self._ensure_caption_snapshot()
         show_top = self.top_visible_chk.isChecked()
         show_bottom = self.bottom_visible_chk.isChecked()
         family = self.font_combo.currentFont().family()
         font_sz = self.font_size_spin.value()
         stroke_w = self.stroke_width_spin.value()
         upper = self.uppercase_chk.isChecked()
+        changed = False
         for cell in [c for c in self.collage.cells if getattr(c, "selected", False)]:
-            if cell.top_caption:
+            cell_changed = False
+            if cell.top_caption and cell.show_top_caption != show_top:
                 cell.show_top_caption = show_top
-            if cell.bottom_caption:
+                cell_changed = True
+            if cell.bottom_caption and cell.show_bottom_caption != show_bottom:
                 cell.show_bottom_caption = show_bottom
-            cell.caption_font_family = family
-            cell.caption_min_size = font_sz
-            cell.caption_max_size = font_sz
-            cell.caption_stroke_width = stroke_w
-            cell.caption_uppercase = upper
-            cell.update()
+                cell_changed = True
+            if cell.caption_font_family != family:
+                cell.caption_font_family = family
+                cell_changed = True
+            if cell.caption_min_size != font_sz or cell.caption_max_size != font_sz:
+                cell.caption_min_size = font_sz
+                cell.caption_max_size = font_sz
+                cell_changed = True
+            if cell.caption_stroke_width != stroke_w:
+                cell.caption_stroke_width = stroke_w
+                cell_changed = True
+            if cell.caption_uppercase != upper:
+                cell.caption_uppercase = upper
+                cell_changed = True
+            if cell_changed:
+                cell.update()
+                changed = True
+        self._finalize_caption_snapshot(changed=changed)
 
     def _on_font_size_slider_changed(self, value: int) -> None:
         if self.font_size_spin.value() != value:
@@ -320,6 +348,24 @@ class MainWindow(QMainWindow):
             adapter,
             history_limit=30,
         )
+
+    def _ensure_caption_snapshot(self) -> None:
+        """Capture a snapshot for caption/style changes if needed."""
+
+        if self._caption_snapshot_captured:
+            return
+        self._caption_snapshot_captured = self._capture_for_undo()
+
+    def _finalize_caption_snapshot(self, *, changed: bool) -> None:
+        """Finalize caption/style snapshot handling based on *changed*."""
+
+        if not self._caption_snapshot_captured:
+            return
+        if changed:
+            self._update_history_baseline()
+        else:
+            self._discard_latest_snapshot()
+        self._caption_snapshot_captured = False
 
     def _capture_for_undo(self) -> bool:
         """Store the current baseline before a modifying action."""

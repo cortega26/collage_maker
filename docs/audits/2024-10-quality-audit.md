@@ -21,8 +21,9 @@
 ### Findings
 1. **Monolithic `MainWindow` orchestration (S1, Eng Lead)** – The class spans ~850 LOC, constructing widgets, file dialogs, autosave, undo, image optimisation, and export flows directly. This violates separation of concerns and complicates headless testing or reuse.【F:src/main.py†L201-L846】  
    _Recommendation:_ Extract presenters/services (`ExportService`, `AutosaveController`, `CaptionStyler`) injected into a slim window; expose them via dependency container for tests.
-2. **Caption styling bypasses undo controller (S1, Front-end Lead)** – `_pick_color` and `_apply_captions_now` mutate selected cells without calling `_capture_for_undo` or refreshing baselines, so Ctrl+Z leaves styling changes intact.【F:src/main.py†L234-L268】  
+2. **Caption styling bypasses undo controller (S1, Front-end Lead)** – `_pick_color` and `_apply_captions_now` mutate selected cells without calling `_capture_for_undo` or refreshing baselines, so Ctrl+Z leaves styling changes intact.【F:src/main.py†L234-L268】
    _Recommendation:_ Capture undo snapshot before scheduling caption updates, coalesce timer flush into controller, and record baseline once updates succeed.
+   _Status update (Nov 2024): Caption styling changes now capture undo snapshots for timer-driven updates and color picks, with regression tests covering undo/redo expectations._【F:src/main.py†L237-L293】【F:tests/test_mainwindow_session.py†L236-L326】
 3. **Template handler silences errors (S2, Product Owner)** – `_apply_template` swallows all exceptions, leaving stale grids if template text is malformed, with no feedback for the user or logs.【F:src/main.py†L349-L356】  
    _Recommendation:_ Validate template strings (`r"^\d+x\d+$"`), show toast/dialog on invalid input, and keep combo in sync.
 4. **Cache abstraction still effectively global (S2, Back-end Lead)** – Although `src/cache.py` offers configuration helpers, most callers pull `image_cache` proxy directly, making instrumentation and per-widget overrides awkward.【F:src/cache.py†L1-L154】  

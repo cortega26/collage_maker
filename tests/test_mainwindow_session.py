@@ -13,6 +13,7 @@ pytest.importorskip(
     exc_type=ImportError,
 )
 
+from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 import src.main as main_module  # noqa: E402
@@ -230,3 +231,96 @@ def test_add_images_rejects_invalid_urls(monkeypatch, main_window_factory):
     first_cell = window.collage.get_cell_at(0, 0)
     assert first_cell is not None
     assert getattr(first_cell, "pixmap", None) is None
+
+
+def test_caption_style_changes_are_undoable(main_window_factory):
+    create_window, _ = main_window_factory
+    window = create_window()
+
+    cell = window.collage.get_cell_at(0, 0)
+    assert cell is not None
+
+    cell.top_caption = "North"
+    cell.bottom_caption = "South"
+    cell.show_top_caption = True
+    cell.show_bottom_caption = True
+    cell.caption_min_size = 20
+    cell.caption_max_size = 20
+    cell.caption_stroke_width = 3
+    cell.caption_uppercase = False
+    cell.selected = True
+
+    window.top_visible_chk.setChecked(True)
+    window.bottom_visible_chk.setChecked(True)
+    window.font_size_spin.setValue(20)
+    window.stroke_width_spin.setValue(3)
+    window.uppercase_chk.setChecked(False)
+    window._update_history_baseline()
+
+    window.uppercase_chk.setChecked(True)
+    window.stroke_width_spin.setValue(6)
+    window.top_visible_chk.setChecked(False)
+    window.bottom_visible_chk.setChecked(False)
+    window.font_size_spin.setValue(26)
+
+    window._apply_captions_now()
+
+    assert cell.caption_uppercase is True
+    assert cell.caption_stroke_width == 6
+    assert cell.caption_min_size == 26
+    assert cell.caption_max_size == 26
+    assert cell.show_top_caption is False
+    assert cell.show_bottom_caption is False
+
+    window._undo()
+
+    assert cell.caption_uppercase is False
+    assert cell.caption_stroke_width == 3
+    assert cell.caption_min_size == 20
+    assert cell.caption_max_size == 20
+    assert cell.show_top_caption is True
+    assert cell.show_bottom_caption is True
+
+    window._redo()
+
+    assert cell.caption_uppercase is True
+    assert cell.caption_stroke_width == 6
+    assert cell.caption_min_size == 26
+    assert cell.caption_max_size == 26
+    assert cell.show_top_caption is False
+    assert cell.show_bottom_caption is False
+
+
+def test_pick_color_integrates_with_undo(monkeypatch, main_window_factory):
+    create_window, _ = main_window_factory
+    window = create_window()
+
+    cell = window.collage.get_cell_at(0, 0)
+    assert cell is not None
+
+    cell.top_caption = "North"
+    cell.caption_stroke_color = QColor("black")
+    cell.caption_fill_color = QColor("white")
+    cell.selected = True
+
+    window._update_history_baseline()
+
+    new_color = QColor("red")
+
+    monkeypatch.setattr(
+        main_module.QColorDialog,
+        "getColor",
+        lambda parent=None: new_color,
+    )
+
+    window._pick_color("stroke")
+
+    assert cell.caption_stroke_color == new_color
+
+    window._undo()
+
+    assert cell.caption_stroke_color == QColor("black")
+
+    window._redo()
+
+    assert cell.caption_stroke_color == new_color
