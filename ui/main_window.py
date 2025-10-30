@@ -106,7 +106,7 @@ class MainWindow(QMainWindow):
             self,
             "Save Collage",
             "",
-            "JPEG (*.jpg);;PNG (*.png);;WEBP (*.webp)"
+            "PNG (*.png);;JPG (*.jpg *.jpeg);;JPEG (*.jpeg *.jpg);;WEBP (*.webp)"
         )
         
         if file_path:

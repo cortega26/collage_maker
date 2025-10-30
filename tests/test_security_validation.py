@@ -2,6 +2,7 @@ import pytest
 
 from utils.validation import validate_image_path, validate_output_path
 from utils.image_processor import ImageProcessor, ImageProcessingError
+from src import config
 
 
 def test_validate_image_path_rejects_urls(tmp_path):
@@ -28,3 +29,11 @@ def test_process_image_invalid_input(tmp_path):
     processor = ImageProcessor()
     with pytest.raises(ImageProcessingError):
         processor.process_image(f, [])
+
+
+def test_valid_extensions_include_avif():
+    assert ".avif" in ImageProcessor.VALID_EXTENSIONS
+
+
+def test_supported_formats_list_includes_avif():
+    assert "avif" in {fmt.lower() for fmt in config.SUPPORTED_IMAGE_FORMATS}

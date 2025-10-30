@@ -37,7 +37,15 @@ class ImageProcessingError(Exception):
 class ImageProcessor:
     """Handles image processing operations with caching and validation."""
     
-    VALID_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff'}
+    VALID_EXTENSIONS = {
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.webp',
+        '.avif',
+        '.bmp',
+        '.tiff',
+    }
     MAX_IMAGE_SIZE = 10000  # Maximum dimension in pixels
     QUALITY = 95  # Default JPEG quality
     

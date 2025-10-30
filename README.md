@@ -8,7 +8,8 @@ A desktop application for building image collages using Python and PySide6.
 - Responsive tiles adapt to window aspect ratio (no wasted space).
 - Per-image filters and adjustments (right-click a cell).
 - Per-image meme-style captions (top/bottom) with auto-fit, stroke, fill.
-- DPI-aware export to PNG/JPEG/WebP (crisp output; safe size clamping).
+- Accepts PNG, JPG/JPEG, BMP, GIF, TIFF, WebP, and AVIF inputs.
+- DPI-aware export to PNG/JPG/WebP (crisp output; safe size clamping).
 - Accessible UI: visible focus, keyboard support, high-contrast tokens.
 
 ## Install
