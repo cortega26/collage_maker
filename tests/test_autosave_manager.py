@@ -7,6 +7,7 @@ import pytest
 
 from src import config
 from src.managers.autosave import AutosaveError, AutosaveManager, autosave_metrics
+from PySide6.QtCore import QCoreApplication
 
 
 class DummyTimer:
@@ -20,9 +21,18 @@ class DummyTimer:
 
 
 def setup_manager(tmp_path):
+    app = QCoreApplication.instance()
+    if app is None:
+        QCoreApplication([])
     autosave_metrics.counters.clear()
     autosave_metrics.durations.clear()
-    manager = AutosaveManager(parent=None, save_callback=lambda: {"foo": "bar"}, timer=DummyTimer())
+    manager = AutosaveManager(
+        parent=None,
+        save_callback=lambda: {"foo": "bar"},
+        timer=DummyTimer(),
+        retry_scheduler=lambda _ms, cb: cb(),
+    )
+    manager._thread_pool.start = lambda worker: worker.run()
     manager.path = str(tmp_path)
     os.makedirs(manager.path, exist_ok=True)
     return manager
@@ -44,6 +54,7 @@ def test_autosave_retries_and_logs(tmp_path, caplog, monkeypatch):
 
     caplog.set_level(logging.INFO)
     manager.perform_autosave()
+    manager.wait_for_idle(timeout=1)
 
     assert attempts["count"] == 2
     assert autosave_metrics.counters["success"] == 1
@@ -60,6 +71,7 @@ def test_autosave_failure_raises(tmp_path, monkeypatch):
 
     with pytest.raises(AutosaveError):
         manager.perform_autosave()
+        manager.wait_for_idle(timeout=1)
 
     assert autosave_metrics.counters["failure"] == 1
 
