@@ -595,7 +595,10 @@ class MainWindow(QMainWindow):
         v.addWidget(original)
 
         fmt_box = QComboBox()
-        fmt_box.addItems(["PNG", "JPEG", "WEBP"])
+        fmt_box.addItem("PNG", userData="png")
+        fmt_box.addItem("JPG", userData="jpg")
+        fmt_box.addItem("JPEG", userData="jpeg")
+        fmt_box.addItem("WEBP", userData="webp")
         v.addWidget(fmt_box)
 
         v.addWidget(QLabel("Quality / Compression:"))
@@ -617,7 +620,7 @@ class MainWindow(QMainWindow):
         if dialog.exec() != QDialog.Accepted:
             return None
         return MainWindow.SaveOptions(
-            format=fmt_box.currentText().lower(),
+            format=str(fmt_box.currentData()),
             quality=quality.value(),
             resolution=int(res_box.currentText().rstrip("x")),
             save_original=original.isChecked(),
@@ -630,24 +633,35 @@ class MainWindow(QMainWindow):
         pictures_dir = (
             QStandardPaths.writableLocation(QStandardPaths.PicturesLocation) or ""
         )
+        fmt = fmt.lower()
+        filter_patterns = {
+            "png": "PNG (*.png)",
+            "jpg": "JPG (*.jpg *.jpeg)",
+            "jpeg": "JPEG (*.jpeg *.jpg)",
+            "webp": "WEBP (*.webp)",
+        }
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Save Collage",
             pictures_dir,
-            f"{fmt.upper()} (*.{fmt})",
+            filter_patterns.get(fmt, f"{fmt.upper()} (*.{fmt})"),
             options=options,
         )
         if not path:
             return None
         input_path = Path(path)
         if not input_path.suffix:
-            path_with_ext = f"{path}.{fmt}"
+            default_ext = {
+                "jpeg": ".jpeg",
+                "jpg": ".jpg",
+            }.get(fmt, f".{fmt}")
+            path_with_ext = f"{path}{default_ext}"
         else:
             path_with_ext = path
 
-        allowed_exts = {f".{fmt.lower()}"}
-        if fmt.lower() == "jpeg":
-            allowed_exts.add(".jpg")
+        allowed_exts = {f".{fmt}"}
+        if fmt in {"jpeg", "jpg"}:
+            allowed_exts.update({".jpg", ".jpeg"})
 
         try:
             validated = validate_output_path(path_with_ext, allowed_exts)
@@ -679,7 +693,7 @@ class MainWindow(QMainWindow):
         orig_path, orig_image = original_payload
 
         def _write_files() -> tuple[str, str | None]:
-            uppercase_fmt = fmt.upper()
+            uppercase_fmt = "JPEG" if fmt in {"jpeg", "jpg"} else fmt.upper()
             if not primary.save(path, uppercase_fmt, quality):
                 raise IOError(f"Failed to save collage to {path}")
             if orig_path and orig_image is not None:

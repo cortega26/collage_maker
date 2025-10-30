@@ -15,7 +15,7 @@ MAX_CACHE_SIZE = 50
 CACHE_CLEANUP_THRESHOLD = 0.8  # Cleanup when cache reaches 80% of max size
 
 # Supported image formats
-SUPPORTED_IMAGE_FORMATS = ['png', 'jpg', 'jpeg', 'bmp', 'webp', 'gif', 'tiff']
+SUPPORTED_IMAGE_FORMATS = ['png', 'jpg', 'jpeg', 'bmp', 'webp', 'avif', 'gif', 'tiff']
 
 # Image dimension limits
 MAX_IMAGE_DIMENSION = 4000       # Maximum width/height for loaded images
