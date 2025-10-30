@@ -8,7 +8,7 @@ import sys
 from dataclasses import dataclass
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 from PySide6.QtCore import QPoint, QStandardPaths, Qt, QThreadPool, QTimer
 from PySide6.QtGui import (
@@ -36,6 +36,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from utils.validation import validate_image_path
 
 try:
     # Preferred package-relative imports
@@ -723,6 +725,32 @@ class MainWindow(QMainWindow):
         p.end()
         return img
 
+    def _validate_selected_images(
+        self, selections: Sequence[str]
+    ) -> tuple[list[Path], list[str]]:
+        """Validate user-selected image paths.
+
+        Returns a tuple containing validated ``Path`` objects and human-readable
+        error messages for any rejected selections.
+        """
+
+        allowed_exts = {
+            f".{ext.lower().lstrip('.')}" for ext in config.SUPPORTED_IMAGE_FORMATS
+        }
+        valid_paths: list[Path] = []
+        errors: list[str] = []
+        for selection in selections:
+            try:
+                validated = validate_image_path(selection, allowed_exts)
+            except ValueError as exc:
+                errors.append(f"{selection}: {exc}")
+                logging.warning(
+                    "Skipping invalid image selection %s: %s", selection, exc
+                )
+                continue
+            valid_paths.append(validated)
+        return valid_paths, errors
+
     def _add_images(self):
         # Select multiple images and fill empty cells in reading order
         exts = [f"*.{e}" for e in config.SUPPORTED_IMAGE_FORMATS]
@@ -742,11 +770,24 @@ class MainWindow(QMainWindow):
                 self, "No Empty Cells", "All cells already contain images."
             )
             return
+        valid_paths, validation_errors = self._validate_selected_images(files)
+        if not valid_paths:
+            details = "\n".join(validation_errors[:3])
+            if len(validation_errors) > 3:
+                details += f"\n…{len(validation_errors) - 3} more rejected selections."
+            QMessageBox.warning(
+                self,
+                "No Valid Images",
+                "None of the selected files could be added:\n" + details,
+            )
+            return
+
         captured = self._capture_for_undo()
         assigned = 0
-        for path, cell in zip(files, empty_cells):
+        attempted = min(len(valid_paths), len(empty_cells))
+        for path, cell in zip(valid_paths, empty_cells):
             try:
-                reader = QImageReader(path)
+                reader = QImageReader(str(path))
                 reader.setAutoTransform(True)
                 img = reader.read()
                 if img.isNull():
@@ -764,11 +805,27 @@ class MainWindow(QMainWindow):
             self._discard_latest_snapshot()
         elif captured and assigned > 0:
             self._update_history_baseline()
-        if assigned < len(files):
+        issues: list[str] = []
+        if assigned < attempted:
+            issues.append(
+                f"{attempted - assigned} file(s) could not be decoded and were skipped."
+            )
+        remaining_capacity = len(valid_paths) - attempted
+        if remaining_capacity > 0:
+            issues.append(
+                f"Only {len(empty_cells)} empty cell(s) were available; {remaining_capacity}"
+                " selection(s) were not placed."
+            )
+        if validation_errors:
+            details = "\n".join(validation_errors[:3])
+            if len(validation_errors) > 3:
+                details += f"\n…{len(validation_errors) - 3} more rejected selections."
+            issues.append("Validation rejected the following selections:\n" + details)
+        if issues:
             QMessageBox.information(
                 self,
                 "Some files skipped",
-                f"Added {assigned} images; others could not be loaded or no empty cells left.",
+                "\n\n".join(issues),
             )
 
     def _ensure_image_format(self, image: QImage, fmt: str) -> QImage:
