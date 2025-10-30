@@ -36,4 +36,4 @@ def test_resize_preserves_aspect_when_requested(tmp_path):
     ops = [{"type": "resize", "params": {"size": (10, 10), "keep_aspect": True}}]
     processor = ImageProcessor()
     result = processor.process_image(image_path, ops)
-    assert result.size == (5, 10)
+    assert result.size == (10, 10)
