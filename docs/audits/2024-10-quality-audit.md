@@ -35,8 +35,9 @@
    _Recommendation:_ Move serialization + retries into a `Worker`, replace sleeps with `QTimer.singleShot`, and emit progress telemetry.
 2. **Original export recomposition is synchronous (S1, Eng Lead)** – `_compose_original_image` builds a giant `QImage` from every original pixmap before dispatching the worker, causing multi-hundred MB allocations and long blocking paints for high-res collages.【F:src/main.py†L779-L817】  
    _Recommendation:_ Stream originals to disk (tile writer) within worker threads or lazily compose per-row to cap memory.
-3. **Add Images path validation skipped (S1, Back-end Lead)** – `_add_images` trusts dialog return values, never invoking `utils.validation.validate_image_path`, so crafted strings (`file://` or unsupported suffixes) reach `QImageReader`, which can hang UI while probing remote paths.【F:src/main.py†L726-L762】【F:utils/validation.py†L16-L45】  
+3. **Add Images path validation skipped (S1, Back-end Lead)** – `_add_images` trusts dialog return values, never invoking `utils.validation.validate_image_path`, so crafted strings (`file://` or unsupported suffixes) reach `QImageReader`, which can hang UI while probing remote paths.【F:src/main.py†L726-L762】【F:utils/validation.py†L16-L45】
    _Recommendation:_ Validate each selection before read, reject unsupported schemes, and surface actionable errors.
+   _Status update (Nov 2024): Main window now validates selections via `_validate_selected_images`, reports rejected paths to the user, and prevents URL schemes from reaching `QImageReader`._【F:src/main.py†L748-L833】【F:tests/test_mainwindow_session.py†L121-L168】
 4. **Save path validation absent (S1, Back-end Lead)** – `_select_save_path` auto-appends extensions but allows directories that do not exist or wrong suffixes, deferring failures to the worker and producing generic IOErrors.【F:src/main.py†L624-L641】【F:utils/validation.py†L47-L70】  
    _Recommendation:_ Validate output path immediately, prompt to create directories, and keep history of last-good location.
 
