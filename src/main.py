@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from utils.validation import validate_image_path
+from utils.validation import validate_image_path, validate_output_path
 
 try:
     # Preferred package-relative imports
@@ -639,7 +639,27 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return None
-        return path if path.lower().endswith(f".{fmt}") else f"{path}.{fmt}"
+        input_path = Path(path)
+        if not input_path.suffix:
+            path_with_ext = f"{path}.{fmt}"
+        else:
+            path_with_ext = path
+
+        allowed_exts = {f".{fmt.lower()}"}
+        if fmt.lower() == "jpeg":
+            allowed_exts.add(".jpg")
+
+        try:
+            validated = validate_output_path(path_with_ext, allowed_exts)
+        except ValueError as exc:
+            QMessageBox.warning(
+                self,
+                "Invalid save location",
+                f"Cannot save collage: {exc}",
+            )
+            return None
+
+        return str(validated)
 
     def _run_export_worker(
         self,
