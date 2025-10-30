@@ -32,8 +32,9 @@
 ## 2. Performance & Reliability
 
 ### Findings
-1. **Autosave runs entirely on UI thread (S0, Eng Lead)** – `AutosaveManager.perform_autosave` writes JSON synchronously and uses `time.sleep` for retries inside the GUI thread, freezing the window for 100–700 ms and compounding under IO stalls.【F:src/managers/autosave.py†L61-L94】  
+1. **Autosave runs entirely on UI thread (S0, Eng Lead)** – `AutosaveManager.perform_autosave` writes JSON synchronously and uses `time.sleep` for retries inside the GUI thread, freezing the window for 100–700 ms and compounding under IO stalls.【F:src/managers/autosave.py†L61-L94】
    _Recommendation:_ Move serialization + retries into a `Worker`, replace sleeps with `QTimer.singleShot`, and emit progress telemetry.
+   _Status update (Nov 2024): Autosave now snapshots state on the UI thread but streams disk writes via a background `Worker` with retry scheduling driven by `QTimer.singleShot`, eliminating UI blocking and exposing a `wait_for_idle` hook for deterministic tests._【F:src/managers/autosave.py†L64-L228】【F:tests/test_autosave_manager.py†L1-L86】
 2. **Original export recomposition is synchronous (S1, Eng Lead)** – `_compose_original_image` builds a giant `QImage` from every original pixmap before dispatching the worker, causing multi-hundred MB allocations and long blocking paints for high-res collages.【F:src/main.py†L779-L817】  
    _Recommendation:_ Stream originals to disk (tile writer) within worker threads or lazily compose per-row to cap memory.
 3. **Add Images path validation skipped (S1, Back-end Lead)** – `_add_images` trusts dialog return values, never invoking `utils.validation.validate_image_path`, so crafted strings (`file://` or unsupported suffixes) reach `QImageReader`, which can hang UI while probing remote paths.【F:src/main.py†L726-L762】【F:utils/validation.py†L16-L45】
