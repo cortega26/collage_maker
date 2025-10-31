@@ -320,6 +320,17 @@ class CollageCell(QWidget):
             logging.info("Cell %d: selected=%s", self.cell_id, self.selected)
             return
 
+        # Exclusive selection when no modifier is held
+        parent = self.parent()
+        sibling_cells = getattr(parent, "cells", None)
+        if sibling_cells:
+            for other in sibling_cells:
+                if other is not self and getattr(other, "selected", False):
+                    other.selected = False
+        if not self.selected:
+            self.selected = True
+            logging.info("Cell %d: selected=%s", self.cell_id, self.selected)
+
         # Begin drag only if image present
         if not self.pixmap:
             return
@@ -411,6 +422,8 @@ class CollageCell(QWidget):
         if text is not None:
             self.top_caption = text
             self.show_top_caption = bool(text.strip())
+            if not self.selected:
+                self.selected = True
             self.update()
 
     def _edit_bottom_caption(self) -> None:
@@ -418,6 +431,8 @@ class CollageCell(QWidget):
         if text is not None:
             self.bottom_caption = text
             self.show_bottom_caption = bool(text.strip())
+            if not self.selected:
+                self.selected = True
             self.update()
 
     def _toggle_top(self, checked: bool) -> None:

@@ -210,7 +210,6 @@ class MainWindow(QMainWindow):
         self.top_visible_chk = panel.top_checkbox
         self.bottom_visible_chk = panel.bottom_checkbox
         self.font_combo = panel.font_combo
-        self.font_size_slider = panel.font_size_slider
         self.font_size_spin = panel.font_size_spin
         self.stroke_width_spin = panel.stroke_width_spin
         self.stroke_btn = panel.stroke_button
@@ -225,7 +224,6 @@ class MainWindow(QMainWindow):
         panel.updateGridRequested.connect(self._update_grid)
         panel.templateSelected.connect(self._apply_template)
         panel.captionSettingsChanged.connect(self._schedule_caption_apply)
-        panel.fontSizeSliderChanged.connect(self._on_font_size_slider_changed)
         panel.fontSizeSpinChanged.connect(self._on_font_size_spin_changed)
         panel.colorPickRequested.connect(self._pick_color)
 
@@ -292,18 +290,7 @@ class MainWindow(QMainWindow):
                 changed = True
         self._finalize_caption_snapshot(changed=changed)
 
-    def _on_font_size_slider_changed(self, value: int) -> None:
-        if self.font_size_spin.value() != value:
-            self.font_size_spin.blockSignals(True)
-            self.font_size_spin.setValue(value)
-            self.font_size_spin.blockSignals(False)
-        self._schedule_caption_apply()
-
     def _on_font_size_spin_changed(self, value: int) -> None:
-        if self.font_size_slider.value() != value:
-            self.font_size_slider.blockSignals(True)
-            self.font_size_slider.setValue(value)
-            self.font_size_slider.blockSignals(False)
         self._schedule_caption_apply()
 
     def _set_font_size_controls(self, value: int) -> None:
@@ -314,9 +301,6 @@ class MainWindow(QMainWindow):
         self.font_size_spin.blockSignals(True)
         self.font_size_spin.setValue(clamped)
         self.font_size_spin.blockSignals(False)
-        self.font_size_slider.blockSignals(True)
-        self.font_size_slider.setValue(clamped)
-        self.font_size_slider.blockSignals(False)
 
     def _create_shortcuts(self):
         QShortcut(

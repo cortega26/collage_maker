@@ -137,6 +137,32 @@ QSpinBox QLineEdit {{
 }}
 QSpinBox:disabled {{ color: {colors.text_muted}; }}
 
+/* Dialogs */
+QDialog {{
+    background-color: {colors.surface};
+    color: {colors.text};
+    border: 1px solid {colors.border};
+    border-radius: {radius.lg}px;
+    padding: {space(3)}px;
+}}
+QDialog QLabel {{
+    color: {colors.text};
+}}
+
+/* Multi-line text edits */
+QTextEdit, QPlainTextEdit {{
+    background-color: {colors.surface};
+    color: {colors.text};
+    border: 1px solid {colors.border};
+    border-radius: {radius.md}px;
+    padding: {space(2)}px;
+    selection-background-color: {colors.focus};
+    selection-color: #ffffff;
+}}
+QTextEdit:disabled, QPlainTextEdit:disabled {{
+    color: {colors.text_muted};
+}}
+
 /* Cards */
 QFrame#card {{
     background-color: {colors.surface};

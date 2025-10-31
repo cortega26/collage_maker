@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
-    QSlider,
     QSpinBox,
     QVBoxLayout,
 )
@@ -54,7 +53,6 @@ class ControlPanel(QFrame):
     updateGridRequested = Signal()
     templateSelected = Signal(str)
     captionSettingsChanged = Signal()
-    fontSizeSliderChanged = Signal(int)
     fontSizeSpinChanged = Signal(int)
     colorPickRequested = Signal(str)
 
@@ -99,10 +97,6 @@ class ControlPanel(QFrame):
     @property
     def font_combo(self) -> QFontComboBox:
         return self._font_combo
-
-    @property
-    def font_size_slider(self) -> QSlider:
-        return self._font_size_slider
 
     @property
     def font_size_spin(self) -> QSpinBox:
@@ -235,22 +229,12 @@ class ControlPanel(QFrame):
         size_label = QLabel("Font Size:")
         size_label.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
 
-        self._font_size_slider = QSlider(Qt.Horizontal)
-        self._font_size_slider.setRange(8, 120)
-        self._font_size_slider.setValue(self._caption_defaults.font_size)
-        self._font_size_slider.setFixedHeight(control_height)
-        self._font_size_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self._font_size_slider.setAccessibleName("Caption Font Size Slider")
-        self._font_size_slider.setToolTip(
-            "Adjust the caption font size using the slider"
-        )
-        self._font_size_slider.valueChanged.connect(self.fontSizeSliderChanged.emit)
-
         self._font_size_spin = QSpinBox()
         self._font_size_spin.setRange(8, 120)
         self._font_size_spin.setValue(self._caption_defaults.font_size)
         self._font_size_spin.setFixedHeight(control_height)
-        self._font_size_spin.setMaximumWidth(80)
+        self._font_size_spin.setMinimumWidth(72)
+        self._font_size_spin.setMaximumWidth(100)
         self._font_size_spin.setAccessibleName("Caption Font Size Value")
         self._font_size_spin.setToolTip(
             "Adjust the caption font size using numeric input"
@@ -306,17 +290,17 @@ class ControlPanel(QFrame):
         caption_layout.addWidget(QLabel("Font:"), 0, 2)
         caption_layout.addWidget(self._font_combo, 0, 3)
         caption_layout.addWidget(size_label, 0, 4)
-        caption_layout.addWidget(self._font_size_slider, 0, 5, 1, 3)
-        caption_layout.addWidget(self._font_size_spin, 0, 8)
-        caption_layout.addWidget(size_unit, 0, 9)
+        caption_layout.addWidget(self._font_size_spin, 0, 5)
+        caption_layout.addWidget(size_unit, 0, 6)
         caption_layout.addWidget(QLabel("Stroke:"), 1, 0)
         caption_layout.addWidget(self._stroke_width_spin, 1, 1)
         caption_layout.addWidget(self._stroke_btn, 1, 2)
         caption_layout.addWidget(self._fill_btn, 1, 3)
         caption_layout.addWidget(self._uppercase_chk, 1, 4)
         caption_layout.setColumnStretch(3, 1)
-        caption_layout.setColumnStretch(5, 3)
-        caption_layout.setColumnStretch(9, 1)
+        caption_layout.setColumnStretch(5, 0)
+        caption_layout.setColumnStretch(6, 0)
+        caption_layout.setColumnStretch(7, 1)
 
         parent_layout.addLayout(caption_layout)
 

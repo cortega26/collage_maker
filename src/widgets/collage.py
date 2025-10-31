@@ -138,6 +138,35 @@ class CollageWidget(QWidget):
 
         snapshot = deserialize_snapshot(state)
 
+        # Attempt in-place restore when grid dimensions and merges match to preserve cell instances.
+        existing_merges = {
+            (row, col, span[0], span[1]) for (row, col), span in self.merged_cells.items()
+        }
+        snapshot_merges = {
+            (merge.row, merge.column, merge.row_span, merge.col_span)
+            for merge in snapshot.merged_cells
+        }
+        can_reuse_cells = (
+            snapshot.rows == self.rows
+            and snapshot.columns == self.columns
+            and existing_merges == snapshot_merges
+        )
+        if can_reuse_cells:
+            for cell_state in snapshot.cells:
+                if not self.get_cell_at(cell_state.row, cell_state.column):
+                    can_reuse_cells = False
+                    break
+        if can_reuse_cells:
+            self.spacing = snapshot.spacing
+            self.grid_layout.setSpacing(self.spacing)
+            for cell_state in snapshot.cells:
+                cell = self.get_cell_at(cell_state.row, cell_state.column)
+                if cell:
+                    cell_state.apply_to_cell(cell)
+            self._apply_sizes()
+            self.update()
+            return
+
         if "spacing" in state:
             self.spacing = snapshot.spacing
         self.grid_layout.setSpacing(self.spacing)
