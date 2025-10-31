@@ -1,6 +1,4 @@
 """Legacy PySide6 launcher bridging to the shared main window."""
-from __future__ import annotations
-
 import logging
 import os
 import sys
@@ -32,7 +30,8 @@ def _prefill_images(window: MainWindow, image_paths: Iterable[str]) -> None:
     safe_paths: list[str] = []
     for raw in image_paths:
         try:
-            resolved = validate_image_path(raw, ImageProcessor.VALID_EXTENSIONS)
+            resolved = validate_image_path(
+                raw, ImageProcessor.VALID_EXTENSIONS)
         except ValueError as exc:
             logger.warning("Skipping invalid image %s: %s", raw, exc)
             continue
@@ -41,7 +40,8 @@ def _prefill_images(window: MainWindow, image_paths: Iterable[str]) -> None:
     if not safe_paths:
         return
 
-    empties = [cell for cell in window.collage.cells if not getattr(cell, "pixmap", None)]
+    empties = [cell for cell in window.collage.cells if not getattr(
+        cell, "pixmap", None)]
     if not empties:
         logger.info("No empty cells available to preload CLI images.")
         return
@@ -55,7 +55,8 @@ def _prefill_images(window: MainWindow, image_paths: Iterable[str]) -> None:
             logger.warning("Failed to preload %s: %s", path, exc)
 
     if assigned < len(safe_paths):
-        logger.info("Loaded %d of %d requested images into the collage.", assigned, len(safe_paths))
+        logger.info("Loaded %d of %d requested images into the collage.",
+                    assigned, len(safe_paths))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
