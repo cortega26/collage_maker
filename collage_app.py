@@ -18,9 +18,20 @@ logger = logging.getLogger("collage_maker.legacy_launcher")
 
 def _apply_styles(app: QApplication) -> None:
     """Apply shared QSS + tokenised theme to *app*."""
-    qss = Path("ui/style.qss")
-    if qss.exists():
-        app.setStyleSheet(qss.read_text(encoding="utf-8"))
+    qss_path = Path("ui/style.qss")
+    if qss_path.exists():
+        qss_content = qss_path.read_text(encoding="utf-8")
+        
+        # Inject absolute path for check icon to resolve relative path issues
+        # Convert backslashes to forward slashes for CSS url() compatibility
+        icon_path = (Path("src/assets/check_icon.svg").resolve().as_posix())
+        qss_content = qss_content.replace("%CHECK_ICON%", icon_path)
+        
+        arrow_path = (Path("src/assets/arrow_down.svg").resolve().as_posix())
+        qss_content = qss_content.replace("%ARROW_DOWN_ICON%", arrow_path)
+        
+        app.setStyleSheet(qss_content)
+        
     theme = os.environ.get("COLLAGE_THEME", "light")
     style_tokens.apply_tokens(app, theme=theme)
 

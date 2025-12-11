@@ -44,6 +44,7 @@ QComboBox::down-arrow {
     width: 12px;
     height: 12px;
     margin-right: 6px;
+    image: url("%ARROW_DOWN_ICON%");
 }
 QComboBox QAbstractItemView {
     border: 1px solid #d1d5db;
@@ -173,42 +174,4 @@ QGroupBox::title {
     padding: 0 4px;
 }
 
-/* Modern Checkbox */
-QCheckBox {
-    spacing: 8px;
-    font-size: 13px;
-    color: #334155; /* Slate-700 */
-}
 
-QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    background-color: white;
-}
-
-QCheckBox::indicator:hover {
-    border-color: #94a3b8;
-    background-color: #f8fafc;
-}
-
-QCheckBox::indicator:checked {
-    background-color: #334155; /* Slate-700 */
-    border-color: #334155;
-    /* Use forward slashes for cross-platform compatibility */
-    image: url("src/assets/check_icon.svg");
-}
-
-QCheckBox::indicator:checked:hover {
-    background-color: #1e293b; /* Slate-800 */
-    border-color: #1e293b;
-}
-
-QCheckBox:focus {
-    outline: none;
-}
-/* Focus ring */
-QCheckBox::indicator:focus {
-    border: 2px solid #6366f1; 
-}

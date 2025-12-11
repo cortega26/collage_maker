@@ -7,7 +7,6 @@ from typing import Tuple
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QFontComboBox,
     QFrame,
@@ -22,6 +21,8 @@ from PySide6.QtWidgets import (
 )
 
 from .modern_spinbox import ModernSpinBox
+from .modern_checkbox import ModernCheckBox
+from .modern_combobox import ModernComboBox
 
 
 @dataclass(frozen=True)
@@ -194,7 +195,7 @@ class ControlPanel(QFrame):
         layout.addWidget(self._cols_spin)
 
         # Template
-        self._template_combo = QComboBox()
+        self._template_combo = ModernComboBox()
         self._template_combo.addItems(self._grid_defaults.templates)
         self._template_combo.setFixedHeight(control_height)
         self._template_combo.setFixedWidth(80)
@@ -250,12 +251,13 @@ class ControlPanel(QFrame):
         
         control_height = 32
 
-        # Font Combo (No Label, just the combo)
-        self._font_combo = QFontComboBox()
+        # Font Combo (Replaced with specific font-populated ModernComboBox)
+        self._font_combo = ModernComboBox()
+        self._font_combo.populate_fonts()
         self._font_combo.setCurrentText(self._caption_defaults.font_family)
         self._font_combo.setFixedHeight(control_height)
         self._font_combo.setMinimumWidth(120)
-        self._font_combo.currentFontChanged.connect(lambda _: self._emit_caption_change())
+        self._font_combo.currentTextChanged.connect(lambda text: self._emit_caption_change())
         layout.addWidget(self._font_combo)
 
         # Size
@@ -276,15 +278,19 @@ class ControlPanel(QFrame):
         self._stroke_width_spin.valueChanged.connect(lambda _: self._emit_caption_change())
         layout.addWidget(self._stroke_width_spin)
 
-        # Toggles
-        self._top_visible_chk = QCheckBox("Top")
-        self._top_visible_chk.setChecked(self._caption_defaults.show_top)
-        
-        self._bottom_visible_chk = QCheckBox("Bottom")
-        self._bottom_visible_chk.setChecked(self._caption_defaults.show_bottom)
-        
-        self._uppercase_chk = QCheckBox("Uppercase")
-        self._uppercase_chk.setChecked(self._caption_defaults.uppercase)
+        # Text Options
+        # Text Options
+        self._top_visible_chk = ModernCheckBox("Top")
+        self._top_visible_chk.setChecked(True)
+        self._top_visible_chk.toggled.connect(lambda _: self._emit_caption_change())
+
+        self._bottom_visible_chk = ModernCheckBox("Bottom")
+        self._bottom_visible_chk.setChecked(True)
+        self._bottom_visible_chk.toggled.connect(lambda _: self._emit_caption_change())
+
+        self._uppercase_chk = ModernCheckBox("Uppercase")
+        self._uppercase_chk.setChecked(True)
+        self._uppercase_chk.toggled.connect(lambda _: self._emit_caption_change())
         self._uppercase_chk.setToolTip("Convert to Uppercase")
 
         layout.addWidget(self._top_visible_chk)
