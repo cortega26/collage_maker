@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from .modern_spinbox import ModernSpinBox
+
 
 @dataclass(frozen=True)
 class GridDefaults:
@@ -171,24 +173,22 @@ class ControlPanel(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
         
-        control_height = 28  # Compact height
+        control_height = 32  # Standard height
 
         # Rows
         layout.addWidget(QLabel("Rows:"))
-        self._rows_spin = QSpinBox()
+        self._rows_spin = ModernSpinBox()
         self._rows_spin.setRange(1, 10)
         self._rows_spin.setValue(self._grid_defaults.rows)
-        self._rows_spin.setFixedHeight(control_height)
         self._rows_spin.setFixedWidth(70)
         self._rows_spin.setToolTip("Rows")
         layout.addWidget(self._rows_spin)
 
         # Columns
         layout.addWidget(QLabel("Cols:"))
-        self._cols_spin = QSpinBox()
+        self._cols_spin = ModernSpinBox()
         self._cols_spin.setRange(1, 10)
         self._cols_spin.setValue(self._grid_defaults.columns)
-        self._cols_spin.setFixedHeight(control_height)
         self._cols_spin.setFixedWidth(70)
         self._cols_spin.setToolTip("Columns")
         layout.addWidget(self._cols_spin)
@@ -202,8 +202,7 @@ class ControlPanel(QFrame):
         layout.addWidget(self._template_combo)
 
         # Update Button
-        update_btn = QToolButton()
-        update_btn.setText("🔄")
+        update_btn = QPushButton("🔄")
         update_btn.setToolTip("Update Grid")
         update_btn.setFixedHeight(control_height)
         update_btn.setFixedWidth(control_height)
@@ -217,12 +216,10 @@ class ControlPanel(QFrame):
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
-        control_height = 28
+        control_height = 32
 
         # Primary Action: Add Images (Icon + Text)
-        add_btn = QToolButton()
-        add_btn.setText("📷 Add")
-        add_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        add_btn = QPushButton("📷 Add")
         add_btn.setFixedHeight(control_height)
         add_btn.clicked.connect(self.addImagesRequested.emit)
         layout.addWidget(add_btn)
@@ -236,8 +233,7 @@ class ControlPanel(QFrame):
         ]
 
         for icon, tooltip, signal in actions:
-            btn = QToolButton()
-            btn.setText(icon)
+            btn = QPushButton(icon)
             btn.setToolTip(tooltip)
             btn.setFixedHeight(control_height)
             btn.setFixedWidth(control_height + 4) # Almost square
@@ -252,7 +248,7 @@ class ControlPanel(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         
-        control_height = 28
+        control_height = 32
 
         # Font Combo (No Label, just the combo)
         self._font_combo = QFontComboBox()
@@ -264,20 +260,18 @@ class ControlPanel(QFrame):
 
         # Size
         layout.addWidget(QLabel("Size:"))
-        self._font_size_spin = QSpinBox()
+        self._font_size_spin = ModernSpinBox()
         self._font_size_spin.setRange(8, 120)
         self._font_size_spin.setValue(self._caption_defaults.font_size)
-        self._font_size_spin.setFixedHeight(control_height)
         self._font_size_spin.setFixedWidth(70)
         self._font_size_spin.valueChanged.connect(self.fontSizeSpinChanged.emit)
         layout.addWidget(self._font_size_spin)
 
         # Stroke Width
         layout.addWidget(QLabel("Stroke:"))
-        self._stroke_width_spin = QSpinBox()
+        self._stroke_width_spin = ModernSpinBox()
         self._stroke_width_spin.setRange(0, 16)
         self._stroke_width_spin.setValue(self._caption_defaults.stroke_width)
-        self._stroke_width_spin.setFixedHeight(control_height)
         self._stroke_width_spin.setFixedWidth(70)
         self._stroke_width_spin.valueChanged.connect(lambda _: self._emit_caption_change())
         layout.addWidget(self._stroke_width_spin)
@@ -298,14 +292,12 @@ class ControlPanel(QFrame):
         layout.addWidget(self._uppercase_chk)
 
         # Colors (Icon buttons)
-        self._stroke_btn = QToolButton()
-        self._stroke_btn.setText("Stroke") # Or use an icon like ✏️
+        self._stroke_btn = QPushButton("Stroke")
         self._stroke_btn.setToolTip("Stroke Color")
         self._stroke_btn.setFixedHeight(control_height)
         self._stroke_btn.clicked.connect(lambda: self.colorPickRequested.emit("stroke"))
         
-        self._fill_btn = QToolButton()
-        self._fill_btn.setText("Fill") # Or use an icon like 🎨
+        self._fill_btn = QPushButton("Fill")
         self._fill_btn.setToolTip("Fill Color")
         self._fill_btn.setFixedHeight(control_height)
         self._fill_btn.clicked.connect(lambda: self.colorPickRequested.emit("fill"))

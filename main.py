@@ -20,6 +20,7 @@ except Exception as exc:
 
 def main() -> int:
     app = QApplication(sys.argv)
+    app.setStyle("Fusion") # Force-enable Fusion for consistent QSS rendering
     # Load static QSS first
     qss = Path('ui/style.qss')
     if qss.exists():

@@ -51,6 +51,97 @@ QComboBox QAbstractItemView {
     selection-color: #ffffff;
 }
 
+/* SpinBox */
+/* SpinBox */
+/* SpinBox DEBUG MODE */
+/* SpinBox - Forced Box Model */
+QAbstractSpinBox {
+    background-color: #ffffff;
+    color: #111827;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding-right: 25px; 
+    min-height: 32px;
+    selection-background-color: #4f46e5;
+    selection-color: white;
+    border-image: none; /* FORCE: Stop native painting */
+}
+
+QAbstractSpinBox QLineEdit {
+    background: transparent;
+    border: none;
+    margin: 0;
+    padding: 0 0 0 10px;
+}
+
+QAbstractSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 25px; 
+    height: 16px; 
+    
+    border-style: solid;
+    border-color: #cbd5e1;
+    border-width: 0px 0px 1px 1px; /* Left & Bottom only */
+    border-top-right-radius: 6px; 
+    
+    background-color: #f1f5f9; 
+    margin: 0;
+    border-image: none; /* FORCE */
+    image: none;
+}
+
+QAbstractSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 25px;
+    height: 16px;
+    
+    border-style: solid;
+    border-color: #cbd5e1;
+    border-width: 0px 0px 0px 1px; /* Left only */
+    border-bottom-right-radius: 6px; 
+    
+    background-color: #f1f5f9;
+    margin: 0;
+    border-image: none; /* FORCE */
+    image: none;
+}
+
+QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover {
+    background-color: #cbd5e1;
+}
+
+QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed {
+    background-color: #94a3b8;
+}
+
+/* Re-implement arrows using images if border trick fails? 
+   Sticking to border trick as it rendered successfully before. */
+QAbstractSpinBox::up-arrow {
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 5px solid #1e293b;
+    image: none;
+}
+
+QAbstractSpinBox::down-arrow {
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #1e293b;
+    image: none;
+}
+
+QAbstractSpinBox::down-arrow:disabled, 
+QAbstractSpinBox::down-arrow:off,
+QAbstractSpinBox::up-arrow:disabled, 
+QAbstractSpinBox::up-arrow:off {
+   border-top-color: #94a3b8;
+   border-bottom-color: #94a3b8;
+}
+
 /* Image Labels */
 ImageLabel {
     border: 2px dashed #d1d5db;
@@ -80,4 +171,44 @@ QGroupBox::title {
     subcontrol-origin: margin;
     left: 10px;
     padding: 0 4px;
+}
+
+/* Modern Checkbox */
+QCheckBox {
+    spacing: 8px;
+    font-size: 13px;
+    color: #334155; /* Slate-700 */
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background-color: white;
+}
+
+QCheckBox::indicator:hover {
+    border-color: #94a3b8;
+    background-color: #f8fafc;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #334155; /* Slate-700 */
+    border-color: #334155;
+    /* Use forward slashes for cross-platform compatibility */
+    image: url("src/assets/check_icon.svg");
+}
+
+QCheckBox::indicator:checked:hover {
+    background-color: #1e293b; /* Slate-800 */
+    border-color: #1e293b;
+}
+
+QCheckBox:focus {
+    outline: none;
+}
+/* Focus ring */
+QCheckBox::indicator:focus {
+    border: 2px solid #6366f1; 
 }

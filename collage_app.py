@@ -65,6 +65,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     qt_args = [sys.argv[0], *image_args]
 
     app = QApplication(qt_args)
+    app.setStyle("Fusion")
     _apply_styles(app)
 
     window = MainWindow()
