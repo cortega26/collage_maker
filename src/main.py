@@ -54,7 +54,10 @@ try:
     from .optimizer import ImageOptimizer
     from .widgets.collage import CollageWidget
     from .widgets.control_panel import CaptionDefaults, ControlPanel, GridDefaults
+    from .widgets.collage import CollageWidget
+    from .widgets.control_panel import CaptionDefaults, ControlPanel, GridDefaults
     from .workers import Worker
+    from .presenter import CollagePresenter
 except ImportError:
     # Fallback for running `python src/main.py` directly
     import sys as _sys
@@ -73,7 +76,10 @@ except ImportError:
     from src.optimizer import ImageOptimizer
     from src.widgets.collage import CollageWidget
     from src.widgets.control_panel import CaptionDefaults, ControlPanel, GridDefaults
+    from src.widgets.collage import CollageWidget
+    from src.widgets.control_panel import CaptionDefaults, ControlPanel, GridDefaults
     from src.workers import Worker
+    from src.presenter import CollagePresenter
 
 LOGGER_NAME = "collage_maker"
 
@@ -140,7 +146,10 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(central)
         # Compact outer margins/spacing
         main_layout.setContentsMargins(8, 6, 8, 6)
+        main_layout.setContentsMargins(8, 6, 8, 6)
         main_layout.setSpacing(8)
+
+        self.presenter = CollagePresenter(self)
 
         # Controls and collage
         self.control_panel = ControlPanel(
@@ -363,111 +372,19 @@ class MainWindow(QMainWindow):
         self.session_controller.update_baseline()
 
     def _update_grid(self):
-        rows = self.rows_spin.value()
-        cols = self.cols_spin.value()
-        if rows == self.collage.rows and cols == self.collage.columns:
-            return
-        captured = self._capture_for_undo()
-        try:
-            self.collage.update_grid(rows, cols)
-        except Exception as exc:
-            if captured:
-                self._discard_latest_snapshot()
-            raise exc
-        else:
-            if captured:
-                self._update_history_baseline()
+        self.presenter.update_grid(
+            self.rows_spin.value(),
+            self.cols_spin.value()
+        )
 
     def _apply_template(self, name: str):
-        try:
-            r, c = name.split("x")
-            self.rows_spin.setValue(int(r))
-            self.cols_spin.setValue(int(c))
-            self._update_grid()
-        except Exception:
-            pass
+        self.presenter.apply_template(name)
 
     def _reset_collage(self):
-        has_content = any(
-            getattr(cell, "pixmap", None) or getattr(cell, "caption", "")
-            for cell in self.collage.cells
-        ) or bool(getattr(self.collage, "merged_cells", {}))
-        if not has_content:
-            return
-        captured = self._capture_for_undo()
-        self.collage.clear()
-        if captured:
-            self._update_history_baseline()
+        self.presenter.reset_collage()
 
     def _apply_state_from_snapshot(self, state: Dict[str, Any]) -> None:
-        if not state:
-            return
-
-        controls = state.get("controls", {})
-        captions = state.get("captions", {})
-        collage_state = state.get("collage", {})
-
-        if collage_state:
-            self.collage.restore_from_serialized(collage_state)
-
-        if controls:
-            rows = controls.get("rows", self.rows_spin.value())
-            cols = controls.get("columns", self.cols_spin.value())
-            template = controls.get("template")
-
-            self.rows_spin.blockSignals(True)
-            self.rows_spin.setValue(rows)
-            self.rows_spin.blockSignals(False)
-
-            self.cols_spin.blockSignals(True)
-            self.cols_spin.setValue(cols)
-            self.cols_spin.blockSignals(False)
-
-            if template and self.template_combo is not None:
-                if template in [
-                    self.template_combo.itemText(i)
-                    for i in range(self.template_combo.count())
-                ]:
-                    self.template_combo.blockSignals(True)
-                    self.template_combo.setCurrentText(template)
-                    self.template_combo.blockSignals(False)
-
-        if captions:
-            self.top_visible_chk.blockSignals(True)
-            self.top_visible_chk.setChecked(bool(captions.get("show_top", True)))
-            self.top_visible_chk.blockSignals(False)
-
-            self.bottom_visible_chk.blockSignals(True)
-            self.bottom_visible_chk.setChecked(bool(captions.get("show_bottom", True)))
-            self.bottom_visible_chk.blockSignals(False)
-
-            font_family = captions.get("font_family")
-            if font_family:
-                self.font_combo.blockSignals(True)
-                self.font_combo.setCurrentText(font_family)
-                self.font_combo.blockSignals(False)
-
-            font_value = captions.get("font_size")
-            if font_value is None:
-                font_value = captions.get(
-                    "min_size",
-                    captions.get("max_size", self.font_size_spin.value()),
-                )
-            self._set_font_size_controls(int(font_value))
-
-            self.stroke_width_spin.blockSignals(True)
-            self.stroke_width_spin.setValue(
-                int(captions.get("stroke_width", self.stroke_width_spin.value()))
-            )
-            self.stroke_width_spin.blockSignals(False)
-
-            self.uppercase_chk.blockSignals(True)
-            self.uppercase_chk.setChecked(
-                bool(captions.get("uppercase", self.uppercase_chk.isChecked()))
-            )
-            self.uppercase_chk.blockSignals(False)
-
-        self.collage.update()
+        self.presenter.apply_state(state)
 
     def _restore_state(self, state: Dict[str, Any]) -> None:
         self.session_controller.restore_state(state)
@@ -940,31 +857,7 @@ class MainWindow(QMainWindow):
 
     def get_collage_state(self):
         """Return a richer snapshot for autosave and recovery."""
-        collage_state = self.collage.serialize_for_autosave()
-        controls_state = {
-            "rows": self.rows_spin.value(),
-            "columns": self.cols_spin.value(),
-            "template": (
-                self.template_combo.currentText()
-                if hasattr(self, "template_combo")
-                else None
-            ),
-        }
-        captions_state = {
-            "show_top": self.top_visible_chk.isChecked(),
-            "show_bottom": self.bottom_visible_chk.isChecked(),
-            "font_family": self.font_combo.currentText(),
-            "font_size": self.font_size_spin.value(),
-            "min_size": self.font_size_spin.value(),
-            "max_size": self.font_size_spin.value(),
-            "stroke_width": self.stroke_width_spin.value(),
-            "uppercase": self.uppercase_chk.isChecked(),
-        }
-        return {
-            "collage": collage_state,
-            "controls": controls_state,
-            "captions": captions_state,
-        }
+        return self.presenter.get_collage_state()
 
 
 if __name__ == "__main__":

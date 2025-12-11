@@ -450,3 +450,10 @@ class CollageWidget(QWidget):
         self.merged_cells.clear()
         self.populate_grid()
         logging.info("CollageWidget: grid cleared.")
+
+    def optimize_memory(self) -> None:
+        """Trigger memory optimization on all cells."""
+        logging.info("CollageWidget: optimizing memory for %d cells", len(self.cells))
+        for cell in self.cells:
+            if hasattr(cell, "optimize_memory"):
+                cell.optimize_memory()

@@ -21,6 +21,7 @@ from PySide6.QtCore import QBuffer, QByteArray
 from .. import config
 from ..cache import get_cache
 from ..optimizer import ImageOptimizer
+from ..workers import Worker
 from ..managers.autosave_encoding import AutosaveToken, get_autosave_encoder
 from utils.image_operations import apply_filter as pil_apply_filter, adjust_brightness as pil_brightness, adjust_contrast as pil_contrast
 from PIL import Image
@@ -101,6 +102,7 @@ class CollageCell(QWidget):
         self._autosave_token: AutosaveToken = (self.cell_id, 0)
         self._autosave_generation: int = 0
         self._autosave_pending: bool = False
+        self._is_loading: bool = False
 
         logging.info("Cell %d created; size %dx%d", cell_id, cell_size, cell_size)
 
@@ -120,6 +122,14 @@ class CollageCell(QWidget):
             style.unpolish(self)
             style.polish(self)
         self.update()
+
+    def focusInEvent(self, event) -> None:
+        self.update()
+        super().focusInEvent(event)
+
+    def focusOutEvent(self, event) -> None:
+        self.update()
+        super().focusOutEvent(event)
 
     def setImage(self, pixmap: QPixmap, *, original: Optional[QPixmap] = None) -> None:
         """Set the display pixmap while preserving an optional original."""
@@ -150,7 +160,9 @@ class CollageCell(QWidget):
             img_rect = None
             self._top_caption_overflow = False
             self._bottom_caption_overflow = False
-            if not self.pixmap:
+            if self._is_loading:
+                self._draw_loading(painter)
+            elif not self.pixmap:
                 self._draw_placeholder(painter)
             else:
                 img_rect = self._draw_image(painter)
@@ -181,9 +193,37 @@ class CollageCell(QWidget):
                 painter.setPen(pen)
                 painter.setBrush(Qt.NoBrush)
                 painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 6, 6)
+                painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 6, 6)
                 painter.restore()
+            if self.hasFocus():
+                self._draw_focus_ring(painter)
         finally:
             painter.end()
+
+    def _draw_focus_ring(self, painter: QPainter) -> None:
+        """Draw an accessibility focus ring."""
+        painter.save()
+        # Outer blue ring
+        pen = QPen(QColor("#0a58ca"))  # Primary from tokens
+        pen.setWidth(2)
+        pen.setStyle(Qt.SolidLine)
+        
+        # Inner white spacing for contrast
+        # Drawing two rects? Or just one with spacing?
+        # Let's draw one distinct ring inside the border
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        # Adjusted slightly inside
+        painter.drawRoundedRect(self.rect().adjusted(2, 2, -2, -2), 5, 5)
+        painter.restore()
+
+    def _draw_loading(self, painter: QPainter) -> None:
+        """Draw a simple loading indicator."""
+        rect = self.rect()
+        painter.fillRect(rect, QColor(245, 245, 245))
+        painter.setPen(QColor(100, 100, 100))
+        font = painter.font(); font.setPointSize(10); painter.setFont(font)
+        painter.drawText(rect, Qt.AlignCenter, "Loading...")
 
     def _draw_placeholder(self, painter: QPainter) -> None:
         rect = self.rect()
@@ -523,9 +563,9 @@ class CollageCell(QWidget):
         event.ignore()
 
     def _load_image(self, file_path: str) -> None:
-        """Load, optimize, cache, and display image."""
+        """Load, optimize, cache, and display image asynchronously."""
         try:
-            # Cache check
+            # Cache check - fast path is synchronous
             cache_key = self._cache_key(file_path)
             cached, meta = get_cache().get(cache_key)
             if cached:
@@ -536,43 +576,79 @@ class CollageCell(QWidget):
                 self.setImage(display_pix, original=original_pix)
                 return
 
-            reader = QImageReader(file_path)
-            reader.setAutoTransform(True)
-            size = reader.size()
-            raw_fmt = reader.format().data() if reader.format() else None
-            fmt = raw_fmt.decode('utf-8') if raw_fmt else ''
+            # Start async loading
+            self._is_loading = True
+            self.update()  # Trigger repaint to show loading state
 
-            # Unsupported formats
-            if fmt.lower() not in config.SUPPORTED_IMAGE_FORMATS:
-                raise IOError(f"Unsupported image format: '{fmt or 'unknown'}'")
+            target_size = self.size()
+            
+            def _load_worker_fn() -> tuple[QImage, QImage]:
+                # Heavy lifting in worker thread
+                reader = QImageReader(file_path)
+                reader.setAutoTransform(True)
+                size = reader.size()
+                raw_fmt = reader.format().data() if reader.format() else None
+                fmt = raw_fmt.decode('utf-8') if raw_fmt else ''
 
-            # Large image scaling
-            max_dim = max(size.width(), size.height())
-            if max_dim > config.MAX_IMAGE_DIMENSION:
-                scale = config.MAX_IMAGE_DIMENSION / max_dim
-                reader.setScaledSize(
-                    QSize(int(size.width()*scale), int(size.height()*scale))
-                )
+                if fmt.lower() not in config.SUPPORTED_IMAGE_FORMATS:
+                    raise IOError(f"Unsupported image format: '{fmt or 'unknown'}'")
 
-            img = reader.read()
-            if img.isNull() or img.width() <= 0 or img.height() <= 0:
-                err = reader.errorString() or "Invalid or empty image data"
-                raise IOError(f"Failed to read image: {err}")
+                max_dim = max(size.width(), size.height())
+                if max_dim > config.MAX_IMAGE_DIMENSION:
+                    scale = config.MAX_IMAGE_DIMENSION / max_dim
+                    reader.setScaledSize(
+                        QSize(int(size.width()*scale), int(size.height()*scale))
+                    )
 
-            # Optimize for display
-            original_pix = QPixmap.fromImage(img)
-            optimized = ImageOptimizer.optimize_image(img, self.size())
-            display_pix = QPixmap.fromImage(optimized)
-            self.setImage(display_pix, original=original_pix)
+                img = reader.read()
+                if img.isNull() or img.width() <= 0 or img.height() <= 0:
+                    err = reader.errorString() or "Invalid or empty image data"
+                    raise IOError(f"Failed to read image: {err}")
 
-            # Cache full-quality
-            full_meta = ImageOptimizer.process_metadata(file_path)
-            get_cache().put(cache_key, (display_pix, original_pix), full_meta)
+                # Create optimized versions (still as QImages, not Map)
+                # Note: QPixmap cannot be created in worker thread safely
+                optimized = ImageOptimizer.optimize_image(img, target_size)
+                
+                # We return raw QImages
+                return (optimized, img)
 
-        except FileNotFoundError as e:
-            logging.error("Cell %d: file not found: %s", self.cell_id, file_path)
+            worker = Worker(_load_worker_fn)
+
+            def _on_result(result: tuple[QImage, QImage]) -> None:
+                optimized_img, full_img = result
+                # Convert to QPixmap on Main Thread
+                display_pix = QPixmap.fromImage(optimized_img)
+                original_pix = QPixmap.fromImage(full_img)
+                
+                self.setImage(display_pix, original=original_pix)
+                
+                # Cache full-quality
+                try:
+                    full_meta = ImageOptimizer.process_metadata(file_path)
+                    get_cache().put(cache_key, (display_pix, original_pix), full_meta)
+                except Exception as e:
+                    logging.warning("Failed to cache metadata for %s: %s", file_path, e)
+                
+                self._is_loading = False
+                self.update()
+
+            def _on_error(err: str) -> None:
+                logging.error("Cell %d: async load error: %s", self.cell_id, err)
+                self._is_loading = False
+                self.update()
+
+            worker.signals.result.connect(_on_result)
+            worker.signals.error.connect(_on_error)
+            
+            # Use global thread pool
+            from PySide6.QtCore import QThreadPool
+            QThreadPool.globalInstance().start(worker)
+
         except Exception as e:
-            logging.error("Cell %d: load error: %s", self.cell_id, e)
+            logging.error("Cell %d: load setup error: %s", self.cell_id, e)
+            self._is_loading = False
+            self.update()
+
 
     def _cache_key(self, file_path: str) -> str:
         size = self.size()

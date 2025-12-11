@@ -42,5 +42,11 @@ class PerformanceMonitor:
 
     def _optimize(self) -> None:
         get_cache().cleanup()
+        # Attempt to optimize grid cells if accessible
+        if hasattr(self.parent, "collage") and hasattr(self.parent.collage, "optimize_memory"):
+            self.parent.collage.optimize_memory()
+        elif hasattr(self.parent, "optimize_memory"):
+             self.parent.optimize_memory()
+            
         gc.collect()
         logging.info("PerformanceMonitor: memory optimization executed")
