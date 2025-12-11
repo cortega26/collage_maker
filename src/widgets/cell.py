@@ -103,6 +103,7 @@ class CollageCell(QWidget):
         self._autosave_generation: int = 0
         self._autosave_pending: bool = False
         self._is_loading: bool = False
+        self._error_message: Optional[str] = None
 
         logging.info("Cell %d created; size %dx%d", cell_id, cell_size, cell_size)
 
@@ -160,8 +161,11 @@ class CollageCell(QWidget):
             img_rect = None
             self._top_caption_overflow = False
             self._bottom_caption_overflow = False
+            self._bottom_caption_overflow = False
             if self._is_loading:
                 self._draw_loading(painter)
+            elif self._error_message:
+                self._draw_error(painter)
             elif not self.pixmap:
                 self._draw_placeholder(painter)
             else:
@@ -224,6 +228,22 @@ class CollageCell(QWidget):
         painter.setPen(QColor(100, 100, 100))
         font = painter.font(); font.setPointSize(10); painter.setFont(font)
         painter.drawText(rect, Qt.AlignCenter, "Loading...")
+
+    def _draw_error(self, painter: QPainter) -> None:
+        """Draw error state."""
+        rect = self.rect()
+        # Light red background
+        painter.fillRect(rect, QColor(254, 242, 242))
+        
+        # Red border
+        painter.setPen(QPen(QColor(220, 38, 38), 2))
+        painter.drawRect(rect.adjusted(1, 1, -1, -1))
+        
+        # Error Text
+        painter.setPen(QColor(185, 28, 28))
+        font = painter.font(); font.setPointSize(10); font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(rect, Qt.AlignCenter, "Image Error")
 
     def _draw_placeholder(self, painter: QPainter) -> None:
         rect = self.rect()
@@ -578,6 +598,8 @@ class CollageCell(QWidget):
 
             # Start async loading
             self._is_loading = True
+            self._error_message = None
+            self.setToolTip("")
             self.update()  # Trigger repaint to show loading state
 
             target_size = self.size()
@@ -634,6 +656,8 @@ class CollageCell(QWidget):
 
             def _on_error(err: str) -> None:
                 logging.error("Cell %d: async load error: %s", self.cell_id, err)
+                self._error_message = err
+                self.setToolTip(f"Error: {err}")
                 self._is_loading = False
                 self.update()
 

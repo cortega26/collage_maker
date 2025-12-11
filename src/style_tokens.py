@@ -11,28 +11,28 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Colors:
-    text: str = "#111827"        # Gray-900
-    text_muted: str = "#6b7280"   # Gray-500
-    background: str = "#f9fafb"   # Gray-50
+    text: str = "#1e293b"         # Slate-800
+    text_muted: str = "#64748b"   # Slate-500
+    background: str = "#f8fafc"   # Slate-50
     surface: str = "#ffffff"      # White
-    border: str = "#e5e7eb"       # Gray-200
-    focus: str = "#1d4ed8"        # Blue-700
-    primary: str = "#0a58ca"      # Accessible blue
-    primary_hover: str = "#094db3"
-    primary_pressed: str = "#083a9b"
+    border: str = "#e2e8f0"       # Slate-200
+    focus: str = "#6366f1"        # Indigo-500
+    primary: str = "#4f46e5"      # Indigo-600
+    primary_hover: str = "#4338ca" # Indigo-700
+    primary_pressed: str = "#3730a3" # Indigo-800
 
 
 @dataclass(frozen=True)
 class Typography:
     font_family: str = '"Segoe UI", "Inter", system-ui'
-    font_size_pt: int = 11
+    font_size_pt: int = 10
 
 
 @dataclass(frozen=True)
 class Radius:
-    sm: int = 4
-    md: int = 6
-    lg: int = 8
+    sm: int = 6
+    md: int = 8
+    lg: int = 12
 
 
 SPACING_UNIT = 4  # px

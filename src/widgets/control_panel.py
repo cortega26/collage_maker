@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QToolButton,
     QSizePolicy,
     QSpinBox,
     QVBoxLayout,
@@ -121,188 +122,202 @@ class ControlPanel(QFrame):
     # Layout builders ---------------------------------------------------------
     def _build_layout(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(10)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(8)
 
-        self._build_grid_row(layout)
-        self._build_action_row(layout)
-        self._build_caption_rows(layout)
+        # Row 1: Actions + Grid
+        row1_container = QFrame()
+        row1 = QHBoxLayout(row1_container)
+        row1.setContentsMargins(0, 0, 0, 0)
+        row1.setSpacing(12)
 
-    def _build_grid_row(self, parent_layout: QVBoxLayout) -> None:
-        control_height = 36
+        self._build_actions(row1)
+        
+        # Spacer to push Grid to the right (or keep them together, let's keep them together for now but separated by a line)
+        line = QFrame()
+        line.setFrameShape(QFrame.VLine)
+        line.setFrameShadow(QFrame.Sunken)
+        line.setStyleSheet("color: #cbd5e1;")
+        row1.addWidget(line)
 
+        self._build_grid_controls(row1)
+        row1.addStretch() # Push everything to left or Keep compact?
+        # Actually user wants to use space. Let's add stretch at the end.
+        
+        layout.addWidget(row1_container)
+
+        # Separator between rows
+        h_line = QFrame()
+        h_line.setFrameShape(QFrame.HLine)
+        h_line.setFrameShadow(QFrame.Sunken)
+        h_line.setStyleSheet("color: #cbd5e1;")
+        layout.addWidget(h_line)
+
+        # Row 2: Captions
+        row2_container = QFrame()
+        row2 = QHBoxLayout(row2_container)
+        row2.setContentsMargins(0, 0, 0, 0)
+        row2.setSpacing(12)
+        
+        self._build_caption_controls(row2)
+        layout.addWidget(row2_container)
+
+    # Removed _add_separator helper as we inline specific ones now
+    
+    def _build_grid_controls(self, parent_layout: QHBoxLayout) -> None:
+        # Container Widget for Grid
+        container = QFrame()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        
+        control_height = 28  # Compact height
+
+        # Rows
+        layout.addWidget(QLabel("Rows:"))
         self._rows_spin = QSpinBox()
         self._rows_spin.setRange(1, 10)
         self._rows_spin.setValue(self._grid_defaults.rows)
         self._rows_spin.setFixedHeight(control_height)
-        self._rows_spin.setMaximumWidth(90)
-        self._rows_spin.setAccessibleName("Row Count")
-        self._rows_spin.setToolTip("Number of rows in the collage grid")
+        self._rows_spin.setFixedWidth(70)
+        self._rows_spin.setToolTip("Rows")
+        layout.addWidget(self._rows_spin)
 
+        # Columns
+        layout.addWidget(QLabel("Cols:"))
         self._cols_spin = QSpinBox()
         self._cols_spin.setRange(1, 10)
         self._cols_spin.setValue(self._grid_defaults.columns)
         self._cols_spin.setFixedHeight(control_height)
-        self._cols_spin.setMaximumWidth(90)
-        self._cols_spin.setAccessibleName("Column Count")
-        self._cols_spin.setToolTip("Number of columns in the collage grid")
+        self._cols_spin.setFixedWidth(70)
+        self._cols_spin.setToolTip("Columns")
+        layout.addWidget(self._cols_spin)
 
+        # Template
         self._template_combo = QComboBox()
         self._template_combo.addItems(self._grid_defaults.templates)
-        self._template_combo.setAccessibleName("Templates")
-        self._template_combo.setToolTip("Choose a predefined collage layout template")
         self._template_combo.setFixedHeight(control_height)
-        self._template_combo.setMinimumWidth(140)
+        self._template_combo.setFixedWidth(80)
         self._template_combo.currentTextChanged.connect(self.templateSelected.emit)
+        layout.addWidget(self._template_combo)
 
-        update_btn = QPushButton("Update Grid")
+        # Update Button
+        update_btn = QToolButton()
+        update_btn.setText("🔄")
+        update_btn.setToolTip("Update Grid")
         update_btn.setFixedHeight(control_height)
-        update_btn.setAccessibleName("Update Grid")
-        update_btn.setToolTip("Apply the selected grid settings to the collage")
+        update_btn.setFixedWidth(control_height)
         update_btn.clicked.connect(self.updateGridRequested.emit)
+        layout.addWidget(update_btn)
+        
+        parent_layout.addWidget(container)
 
-        grid_row = QGridLayout()
-        grid_row.setVerticalSpacing(6)
-        grid_row.setHorizontalSpacing(12)
-        grid_row.addWidget(QLabel("Rows:"), 0, 0)
-        grid_row.addWidget(self._rows_spin, 0, 1)
-        grid_row.addWidget(QLabel("Cols:"), 0, 2)
-        grid_row.addWidget(self._cols_spin, 0, 3)
-        grid_row.addWidget(QLabel("Template:"), 0, 4)
-        grid_row.addWidget(self._template_combo, 0, 5)
-        grid_row.addWidget(update_btn, 0, 6)
-        grid_row.setColumnStretch(5, 1)
-        grid_row.setColumnStretch(6, 0)
-        parent_layout.addLayout(grid_row)
+    def _build_actions(self, parent_layout: QHBoxLayout) -> None:
+        container = QFrame()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        control_height = 28
 
-    def _build_action_row(self, parent_layout: QVBoxLayout) -> None:
-        control_height = 36
-        actions = QHBoxLayout()
-        actions.setSpacing(8)
+        # Primary Action: Add Images (Icon + Text)
+        add_btn = QToolButton()
+        add_btn.setText("📷 Add")
+        add_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        add_btn.setFixedHeight(control_height)
+        add_btn.clicked.connect(self.addImagesRequested.emit)
+        layout.addWidget(add_btn)
 
-        for text, signal in (
-            ("Add Images…", self.addImagesRequested.emit),
-            ("Merge", self.mergeRequested.emit),
-            ("Split", self.splitRequested.emit),
-            ("Clear All", self.clearRequested.emit),
-            ("Save Collage", self.saveRequested.emit),
-        ):
-            btn = QPushButton(text)
+        # Secondary Actions (Icon Only)
+        actions = [
+            ("💾", "Save", self.saveRequested.emit),
+            ("🔗", "Merge", self.mergeRequested.emit),
+            ("✂️", "Split", self.splitRequested.emit),
+            ("🗑️", "Clear", self.clearRequested.emit),
+        ]
+
+        for icon, tooltip, signal in actions:
+            btn = QToolButton()
+            btn.setText(icon)
+            btn.setToolTip(tooltip)
             btn.setFixedHeight(control_height)
-            btn.setAccessibleName(text)
-            btn.setToolTip(text)
+            btn.setFixedWidth(control_height + 4) # Almost square
             btn.clicked.connect(signal)
-            actions.addWidget(btn)
+            layout.addWidget(btn)
+        
+        parent_layout.addWidget(container)
 
-        actions.addStretch(1)
-        parent_layout.addLayout(actions)
+    def _build_caption_controls(self, parent_layout: QHBoxLayout) -> None:
+        container = QFrame()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        
+        control_height = 28
 
-    def _build_caption_rows(self, parent_layout: QVBoxLayout) -> None:
-        control_height = 36
-
-        self._top_visible_chk = QCheckBox("Show Top")
-        self._top_visible_chk.setChecked(self._caption_defaults.show_top)
-        self._top_visible_chk.setAccessibleName("Toggle Top Caption")
-        self._top_visible_chk.setToolTip(
-            "Show or hide the caption at the top of the collage"
-        )
-        self._top_visible_chk.setMinimumHeight(control_height)
-
-        self._bottom_visible_chk = QCheckBox("Show Bottom")
-        self._bottom_visible_chk.setChecked(self._caption_defaults.show_bottom)
-        self._bottom_visible_chk.setAccessibleName("Toggle Bottom Caption")
-        self._bottom_visible_chk.setToolTip(
-            "Show or hide the caption at the bottom of the collage"
-        )
-        self._bottom_visible_chk.setMinimumHeight(control_height)
-
+        # Font Combo (No Label, just the combo)
         self._font_combo = QFontComboBox()
         self._font_combo.setCurrentText(self._caption_defaults.font_family)
         self._font_combo.setFixedHeight(control_height)
-        self._font_combo.setMinimumWidth(160)
-        self._font_combo.setAccessibleName("Caption Font Family")
-        self._font_combo.setToolTip("Choose the font used for collage captions")
-        self._font_combo.currentFontChanged.connect(
-            lambda _: self._emit_caption_change()
-        )
+        self._font_combo.setMinimumWidth(120)
+        self._font_combo.currentFontChanged.connect(lambda _: self._emit_caption_change())
+        layout.addWidget(self._font_combo)
 
-        size_label = QLabel("Font Size:")
-        size_label.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
-
+        # Size
+        layout.addWidget(QLabel("Size:"))
         self._font_size_spin = QSpinBox()
         self._font_size_spin.setRange(8, 120)
         self._font_size_spin.setValue(self._caption_defaults.font_size)
         self._font_size_spin.setFixedHeight(control_height)
-        self._font_size_spin.setMinimumWidth(72)
-        self._font_size_spin.setMaximumWidth(100)
-        self._font_size_spin.setAccessibleName("Caption Font Size Value")
-        self._font_size_spin.setToolTip(
-            "Adjust the caption font size using numeric input"
-        )
+        self._font_size_spin.setFixedWidth(70)
         self._font_size_spin.valueChanged.connect(self.fontSizeSpinChanged.emit)
+        layout.addWidget(self._font_size_spin)
 
-        size_unit = QLabel("px")
-        size_unit.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-
+        # Stroke Width
+        layout.addWidget(QLabel("Stroke:"))
         self._stroke_width_spin = QSpinBox()
         self._stroke_width_spin.setRange(0, 16)
         self._stroke_width_spin.setValue(self._caption_defaults.stroke_width)
         self._stroke_width_spin.setFixedHeight(control_height)
-        self._stroke_width_spin.setMaximumWidth(80)
-        self._stroke_width_spin.setAccessibleName("Caption Stroke Width")
-        self._stroke_width_spin.setToolTip(
-            "Set the outline thickness for caption text"
-        )
-        self._stroke_width_spin.valueChanged.connect(
-            lambda _: self._emit_caption_change()
-        )
+        self._stroke_width_spin.setFixedWidth(70)
+        self._stroke_width_spin.valueChanged.connect(lambda _: self._emit_caption_change())
+        layout.addWidget(self._stroke_width_spin)
 
-        self._stroke_btn = QPushButton("Stroke Color")
-        self._stroke_btn.setFixedHeight(control_height)
-        self._stroke_btn.setAccessibleName("Choose Caption Stroke Color")
-        self._stroke_btn.setToolTip("Select the outline color for captions")
-        self._stroke_btn.clicked.connect(lambda: self.colorPickRequested.emit("stroke"))
-
-        self._fill_btn = QPushButton("Fill Color")
-        self._fill_btn.setFixedHeight(control_height)
-        self._fill_btn.setAccessibleName("Choose Caption Fill Color")
-        self._fill_btn.setToolTip("Select the fill color for captions")
-        self._fill_btn.clicked.connect(lambda: self.colorPickRequested.emit("fill"))
-
-        self._uppercase_chk = QCheckBox("UPPERCASE")
+        # Toggles
+        self._top_visible_chk = QCheckBox("Top")
+        self._top_visible_chk.setChecked(self._caption_defaults.show_top)
+        
+        self._bottom_visible_chk = QCheckBox("Bottom")
+        self._bottom_visible_chk.setChecked(self._caption_defaults.show_bottom)
+        
+        self._uppercase_chk = QCheckBox("Uppercase")
         self._uppercase_chk.setChecked(self._caption_defaults.uppercase)
-        self._uppercase_chk.setAccessibleName("Toggle Uppercase Captions")
-        self._uppercase_chk.setToolTip("Switch between uppercase and mixed-case captions")
-        self._uppercase_chk.setMinimumHeight(control_height)
+        self._uppercase_chk.setToolTip("Convert to Uppercase")
 
-        for checkbox in (
-            self._top_visible_chk,
-            self._bottom_visible_chk,
-            self._uppercase_chk,
-        ):
-            checkbox.toggled.connect(lambda _: self._emit_caption_change())
+        layout.addWidget(self._top_visible_chk)
+        layout.addWidget(self._bottom_visible_chk)
+        layout.addWidget(self._uppercase_chk)
 
-        caption_layout = QGridLayout()
-        caption_layout.setHorizontalSpacing(10)
-        caption_layout.setVerticalSpacing(6)
-        caption_layout.addWidget(self._top_visible_chk, 0, 0)
-        caption_layout.addWidget(self._bottom_visible_chk, 0, 1)
-        caption_layout.addWidget(QLabel("Font:"), 0, 2)
-        caption_layout.addWidget(self._font_combo, 0, 3)
-        caption_layout.addWidget(size_label, 0, 4)
-        caption_layout.addWidget(self._font_size_spin, 0, 5)
-        caption_layout.addWidget(size_unit, 0, 6)
-        caption_layout.addWidget(QLabel("Stroke:"), 1, 0)
-        caption_layout.addWidget(self._stroke_width_spin, 1, 1)
-        caption_layout.addWidget(self._stroke_btn, 1, 2)
-        caption_layout.addWidget(self._fill_btn, 1, 3)
-        caption_layout.addWidget(self._uppercase_chk, 1, 4)
-        caption_layout.setColumnStretch(3, 1)
-        caption_layout.setColumnStretch(5, 0)
-        caption_layout.setColumnStretch(6, 0)
-        caption_layout.setColumnStretch(7, 1)
+        # Colors (Icon buttons)
+        self._stroke_btn = QToolButton()
+        self._stroke_btn.setText("Stroke") # Or use an icon like ✏️
+        self._stroke_btn.setToolTip("Stroke Color")
+        self._stroke_btn.setFixedHeight(control_height)
+        self._stroke_btn.clicked.connect(lambda: self.colorPickRequested.emit("stroke"))
+        
+        self._fill_btn = QToolButton()
+        self._fill_btn.setText("Fill") # Or use an icon like 🎨
+        self._fill_btn.setToolTip("Fill Color")
+        self._fill_btn.setFixedHeight(control_height)
+        self._fill_btn.clicked.connect(lambda: self.colorPickRequested.emit("fill"))
+        
+        layout.addWidget(self._stroke_btn)
+        layout.addWidget(self._fill_btn)
 
-        parent_layout.addLayout(caption_layout)
+        # Connect toggles
+        for checkbox in (self._top_visible_chk, self._bottom_visible_chk, self._uppercase_chk):
+             checkbox.toggled.connect(lambda _: self._emit_caption_change())
+
+        parent_layout.addWidget(container, stretch=1)
 
     def _emit_caption_change(self) -> None:
         self.captionSettingsChanged.emit()

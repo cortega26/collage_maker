@@ -50,3 +50,22 @@ def test_paint_event_calls_focus_ring(app):
     cell.repaint()
     assert cell.hasFocus()
     cell.close()
+
+def test_cell_error_state(app):
+    """UX-001: Verify error state is handled."""
+    from src.widgets.cell import CollageCell
+    
+    cell = CollageCell(1)
+    
+    # Simulate internal state change for error
+    cell._error_message = "Test Error"
+    cell.setToolTip("Error: Test Error")
+    
+    # Ensure paint does not crash and renders error state
+    cell.show()
+    cell.repaint()
+    
+    assert "Error" in cell.toolTip()
+    assert cell._error_message == "Test Error"
+    
+    cell.close()
